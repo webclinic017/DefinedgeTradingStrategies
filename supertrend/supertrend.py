@@ -19,10 +19,11 @@ CONNECTION_STRING = os.environ.get('CONNECTION_STRING')  #Mongo Connection
 trade_end_time = parser.parse(str(os.environ.get('trade_end_time'))).time()
 """
 
-slack_url = "https://hooks.slack.com/services/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"
+slack_url = "https://hooks.slack.com/services/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"
 slack_channel = "straddlebot"
 CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongodb.net/?retryWrites=true&w=majority" #Mongo Connection
 trade_end_time = parser.parse("15:25:00").time()
+trade_start_time = parser.parse("9:20:00").time()
 
 mongo_client = MongoClient(CONNECTION_STRING)
 collection_name = "supertrend"
@@ -128,6 +129,7 @@ def supertrend(df: pd.DataFrame, period: int, multiplier: int):
                 df['signal'][current] = "Bearish"
     
     df['value'] = df['value'].round(2)
+    print(df)
     df.drop(['open', 'high', 'low', 'basic_upperband', 'basic_lowerband', 'hl2', 'final_upperband', 'final_lowerband', 'volume', 'in_uptrend', 'ATR'], axis='columns', inplace=True)
 
     return df
@@ -178,9 +180,9 @@ def main():
         
         logger.info("\n***** 15-minute OHLC Data *****\n")
         df_15min['ATR'] = atr(df_15min, 10)
-        df_15min= supertrend(df_15min, 10, 3)
+        df_15min= supertrend(df_15min, 10, 4)
         print(df_15min.iloc[-2])
-        notify("Fetching SuperTrend:",str(df_15min.iloc[-2]) , "#FF0000")
+        #notify("Fetching SuperTrend:",str(df_15min.iloc[-2]) , "#FF0000")
         #print(df_15min)
 
         if supertrend_collection.count_documents({"_id": "supertrend"}) == 0:

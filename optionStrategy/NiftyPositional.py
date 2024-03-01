@@ -26,7 +26,7 @@ trade_start_time = parser.parse("9:29:00").time()
 trade_end_time = parser.parse(str(os.environ.get('trade_end_time'))).time()
 """
 
-slack_url = "https://hooks.slack.com/services/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"
+slack_url = "https://hooks.slack.com/services/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"
 slack_channel = "straddlebot"
 CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongodb.net/?retryWrites=true&w=majority"  # Mongo Connection
 user_name = "sugam"
@@ -85,6 +85,8 @@ def login_to_integrate(api_token: str, api_secret: str) -> ConnectToIntegrate:
     conn = ConnectToIntegrate()
     totp = pyotp.TOTP("NZKUOQTJKBAVK3KNPBYUMRDTOBWUU2KV").now()
     conn.login(api_token=api_token, api_secret=api_secret, totp=totp)
+    print("Connected successfully with Definedge API's")
+    notify("Connection Established!", "Connected successfully with Definedge API's")
     return conn
 
 
@@ -124,6 +126,7 @@ def place_buy_order(conn: ConnectToIntegrate, symbol, qty):
         quantity=qty,
         tradingsymbol=symbol,
     )
+    orders.insert_one(order)
     order_id = order['order_id']
     order = get_order_by_order_id(conn, order_id)
     print(f"Order Status: {order['order_status']}")
@@ -132,6 +135,8 @@ def place_buy_order(conn: ConnectToIntegrate, symbol, qty):
         raise Exception("Error in placing order - " +
                     str(order['message']))
     print(f"Order placed: {order}")
+    notify("Order placed:", str(order))
+    orders.insert_one(order)
     return order
 
 
@@ -147,6 +152,7 @@ def place_sell_order(conn: ConnectToIntegrate, symbol, qty):
         quantity=qty,
         tradingsymbol=symbol,
     )
+    orders.insert_one(order)
     order_id = order['order_id']
     order = get_order_by_order_id(conn, order_id)
     print(f"Order Status: {order['order_status']}")
@@ -155,6 +161,8 @@ def place_sell_order(conn: ConnectToIntegrate, symbol, qty):
         raise Exception("Error in placing order - " +
                     str(order['message']))
     print(f"Order placed: {order}")
+    notify("Order placed:", str(order))
+    orders.insert_one(order)
     return order
 
 
@@ -175,6 +183,8 @@ def get_nifty_close(conn: ConnectToIntegrate):
     start = yesterday.replace(hour=9, minute=15, second=0, microsecond=0)
     end = datetime.datetime.today()
     df = fetch_historical_data(conn, exchange, trading_symbol, start, end)
+    print(f"nifty close: {df.iloc[-1]['close']}")
+    notify("nifty close",str(df.iloc[-1]['close']))
     return df.iloc[-1]['close']
 
 
@@ -219,6 +229,8 @@ def get_option_symbol(strike=19950, option_type = "PE" ):
     end_of_week = start_of_week + timedelta(days=12)
     df= df[(df['EXPIRY'] >= start_of_week) & (df['EXPIRY'] >= current_date) & (df['EXPIRY'] <= end_of_week)]
     df = df.head(1)
+    print("Getting options Symbol...")
+    print(f"Symbol: {df['TRADINGSYM'].values[0]} , Expiry: {df['EXPIRY'].values[0]}")
     return df['TRADINGSYM'].values[0], df['EXPIRY'].values[0]
 
 
@@ -242,6 +254,7 @@ def create_bull_put_spread(conn: ConnectToIntegrate):
         sell_order = place_sell_order(conn, sell_strike_symbol, quantity)
     short_option_cost = sell_order['average_traded_price']
     long_option_cost = buy_order['average_traded_price']
+    notify("New position alert!", "created bull put spread!")
     record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, "Bullish", nifty_close, expiry, short_option_cost, long_option_cost)
     return buy_order['order_id'], sell_order['order_id']
 
@@ -291,21 +304,26 @@ def create_bear_call_spread(conn: ConnectToIntegrate):
         sell_order = place_sell_order(conn, sell_strike_symbol, quantity)
     short_option_cost = sell_order['average_traded_price']
     long_option_cost = buy_order['average_traded_price']
+    notify("New position alert!", "created bear call spread!")
     record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, "Bearish", nifty_close, expiry, short_option_cost, long_option_cost)
     return buy_order['order_id'], sell_order['order_id']
 
 def calculate_pnl(quantity, long_entry, long_exit, short_entry, short_exit):
     pnl = float(quantity) * ((float(short_entry) - float(short_exit)) + (float(long_exit) - float(long_entry)))
+    notify("Realized Gains:", str(round(pnl, 2)))
     return round(pnl, 2)
 
 @retry(tries=5, delay=5, backoff=2)
 def close_active_positions(conn: ConnectToIntegrate):
+    print("Closing active positions")
+    notify("Closing active positions", "closing all the option positions")
     active_strategies = strategies.find({'strategy_state': 'active'})
     for strategy in active_strategies:
         buy_order = place_buy_order(conn, strategy['short_option_symbol'], strategy['quantity'])
+        notify("Closing Alert!", "Short option leg closed")
         if buy_order['order_status'] == "COMPLETE":
             sell_order = place_sell_order(conn, strategy['long_option_symbol'], strategy['quantity'])
-            print(f"Sell Order: {sell_order}")
+            notify("Closing Alert!", "Long option leg closed")
             strategies.update_one({'_id': strategy['_id']}, {'$set': {'strategy_state': 'closed'}})
             strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_date': str(datetime.datetime.now().date())}})
             strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_time': datetime.datetime.now().strftime('%H:%M')}})
@@ -322,7 +340,6 @@ def main():
     conn = login_to_integrate(api_token, api_secret)
     notify("Nifty Positional bot kicked off", "Monitoring started")
     while True:
-        print("starting Now")
         current_time = datetime.datetime.now().time()
         if current_time > trade_start_time:
             print("Started Monitoring")
@@ -331,12 +348,15 @@ def main():
                     {'strategy_state': 'active'})
                 for strategy in active_strategies:
                     if strategy['trend'] != get_supertrend_direction():
+                        notify("Supertrend Direction Changed", get_supertrend_direction())
                         close_active_positions(conn)
                         break
                     if current_time > datetime.time(hour=15, minute=00) and strategy['expiry'] == str(datetime.now().date()):
+                        notify("Today is Expiry!", "Rolling over positions to next expiry")
                         close_active_positions(conn)
                         break
                     if strategy['trend'] == get_supertrend_direction():
+                        time.sleep(50)
                         continue
             else:
                 if get_supertrend_direction() == 'Bullish':
@@ -345,7 +365,8 @@ def main():
                     create_bear_call_spread(conn)
         
         if current_time > trade_end_time:
+            notify("Closing Bell", "Bot will exit now")
             return   
-        time.sleep(30)
+        time.sleep(10)
 if __name__ == "__main__":
     main()
