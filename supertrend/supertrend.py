@@ -160,8 +160,8 @@ def notify(title, message, color="#00FF00"):
 
 def main():
     while True:
+        current_time = datetime.now().time()
         if current_time > trade_start_time:
-            current_time = datetime.now().time()
             api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
             api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
             exchange = "NSE"

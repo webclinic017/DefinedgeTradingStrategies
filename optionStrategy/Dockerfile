@@ -1,5 +1,5 @@
 # Start from python slim-buster docker image
-FROM python:3.8.6-slim-buster
+FROM python:3.11.8-slim
 # Update base packages
 RUN apt-get update -y
 RUN apt-get upgrade -y
