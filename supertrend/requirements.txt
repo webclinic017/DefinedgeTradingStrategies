@@ -1,4 +1,3 @@
-pyintegrate==1.0.2
 pandas==2.0.3
 pymongo==4.4.1
 pyotp==2.9.0
