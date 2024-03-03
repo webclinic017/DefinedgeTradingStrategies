@@ -159,6 +159,7 @@ def notify(title, message, color="#00FF00"):
     requests.post(slack_url, data=json.dumps(slack_data), headers=headers)
 
 def main():
+    print("Supertrend Started")
     while True:
         current_time = datetime.now().time()
         if current_time > trade_start_time:
@@ -195,7 +196,7 @@ def main():
                 supertrend_collection.update_one({'_id': "supertrend"}, {'$set': {"datetime": df_15min.iloc[-2]['datetime'],
                             "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "signal": df_15min.iloc[-2]['signal']}})
         
-
+        print("repeating loop for Supertrend")
         if current_time > trade_end_time:
             return
         
