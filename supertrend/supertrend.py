@@ -23,7 +23,7 @@ slack_url = "https://hooks.slack.com/services/T04QVEGK057/B05BJSS93HR/iBOHI2hpkd
 slack_channel = "straddlebot"
 CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongodb.net/?retryWrites=true&w=majority" #Mongo Connection
 trade_end_time = parser.parse("15:25:00").time()
-trade_start_time = parser.parse("9:20:00").time()
+trade_start_time = parser.parse("9:16:00").time()
 
 mongo_client = MongoClient(CONNECTION_STRING)
 collection_name = "supertrend"
