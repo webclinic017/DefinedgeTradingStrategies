@@ -31,7 +31,7 @@ slack_channel = "straddlebot"
 CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongodb.net/?retryWrites=true&w=majority"  # Mongo Connection
 user_name = "sugam"
 quantity = '50'
-trade_start_time = parser.parse("9:29:00").time()
+trade_start_time = parser.parse("9:20:00").time()
 trade_end_time = parser.parse("15:25:00").time()
 
 mongo_client = MongoClient(CONNECTION_STRING)

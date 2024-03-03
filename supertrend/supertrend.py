@@ -160,39 +160,40 @@ def notify(title, message, color="#00FF00"):
 
 def main():
     while True:
-        current_time = datetime.now().time()
-        api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
-        api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
-        exchange = "NSE"
-        trading_symbol = "Nifty 50"
-        frequency = '15T'
-        # Calculate 10 days ago from today
-        ten_days_ago = datetime.now() - timedelta(days=7)
+        if current_time > trade_start_time:
+            current_time = datetime.now().time()
+            api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
+            api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
+            exchange = "NSE"
+            trading_symbol = "Nifty 50"
+            frequency = '15T'
+            # Calculate 10 days ago from today
+            ten_days_ago = datetime.now() - timedelta(days=5)
 
-        # Set the time to 9:15 AM on that date
-        start = ten_days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
-        #start = datetime(2024, 2, 13, 9, 15)
-        end = datetime.today()
+            # Set the time to 9:15 AM on that date
+            start = ten_days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
+            #start = datetime(2024, 2, 13, 9, 15)
+            end = datetime.today()
 
-        conn = login_to_integrate(api_token, api_secret)
-        df = fetch_historical_data(conn, exchange, trading_symbol, start, end)
-        df_15min = resample_ohlc_data(df, frequency)
-        
-        logger.info("\n***** 15-minute OHLC Data *****\n")
-        df_15min['ATR'] = atr(df_15min, 10)
-        df_15min= supertrend(df_15min, 10, 4)
-        print(df_15min.iloc[-2])
-        #notify("Fetching SuperTrend:",str(df_15min.iloc[-2]) , "#FF0000")
-        #print(df_15min)
+            conn = login_to_integrate(api_token, api_secret)
+            df = fetch_historical_data(conn, exchange, trading_symbol, start, end)
+            df_15min = resample_ohlc_data(df, frequency)
+            
+            logger.info("\n***** 15-minute OHLC Data *****\n")
+            df_15min['ATR'] = atr(df_15min, 10)
+            df_15min= supertrend(df_15min, 10, 4)
+            print(df_15min.iloc[-2])
+            #notify("Fetching SuperTrend:",str(df_15min.iloc[-2]) , "#FF0000")
+            #print(df_15min)
 
-        if supertrend_collection.count_documents({"_id": "supertrend"}) == 0:
-            st = {"_id": "supertrend", "datetime": df_15min.iloc[-2]['datetime'],
-                        "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "signal": df_15min.iloc[-2]['signal']}
-            supertrend_collection.insert_one(st)
-            notify("Strategy details recorded for monitoring", str(st))
-        else:
-            supertrend_collection.update_one({'_id': "supertrend"}, {'$set': {"datetime": df_15min.iloc[-2]['datetime'],
-                        "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "signal": df_15min.iloc[-2]['signal']}})
+            if supertrend_collection.count_documents({"_id": "supertrend"}) == 0:
+                st = {"_id": "supertrend", "datetime": df_15min.iloc[-2]['datetime'],
+                            "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "signal": df_15min.iloc[-2]['signal']}
+                supertrend_collection.insert_one(st)
+                notify("Strategy details recorded for monitoring", str(st))
+            else:
+                supertrend_collection.update_one({'_id': "supertrend"}, {'$set': {"datetime": df_15min.iloc[-2]['datetime'],
+                            "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "signal": df_15min.iloc[-2]['signal']}})
         
 
         if current_time > trade_end_time:
