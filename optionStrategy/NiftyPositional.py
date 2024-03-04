@@ -340,8 +340,10 @@ def main():
     api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
     conn = login_to_integrate(api_token, api_secret)
     notify("Nifty Positional bot kicked off", "Monitoring started")
+    print("Nifty Positional bot kicked off, Monitoring started")
     while True:
         current_time = datetime.datetime.now().time()
+        print(f"current time: {current_time}")
         if current_time > trade_start_time:
             print("Started Monitoring")
             if strategies.count_documents({'strategy_state': 'active'}) > 0:
