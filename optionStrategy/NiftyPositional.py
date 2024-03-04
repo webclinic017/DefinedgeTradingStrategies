@@ -112,6 +112,7 @@ def fetch_historical_data(conn: ConnectToIntegrate, exchange: str, trading_symbo
 def get_supertrend_direction():
     supertrend_collection = mongo_client['Bots']["supertrend"]
     supertrend = supertrend_collection.find_one({"_id": "supertrend"})
+    print(f"Nifty Trend: {supertrend['signal']}")
     return supertrend["signal"]
 
 
@@ -345,7 +346,7 @@ def main():
         current_time = datetime.datetime.now().time()
         print(f"current time: {current_time}")
         if current_time > trade_start_time:
-            print("Started Monitoring")
+            print("Trading Window is active.")
             if strategies.count_documents({'strategy_state': 'active'}) > 0:
                 active_strategies = strategies.find(
                     {'strategy_state': 'active'})
@@ -359,7 +360,7 @@ def main():
                         close_active_positions(conn)
                         break
                     if strategy['trend'] == get_supertrend_direction():
-                        time.sleep(50)
+                        time.sleep(30)
                         continue
             else:
                 if get_supertrend_direction() == 'Bullish':
