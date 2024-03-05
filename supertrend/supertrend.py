@@ -200,7 +200,7 @@ def main():
         if current_time > trade_end_time:
             return
         
-        time.sleep(60)
+        time.sleep(20)
 
 if __name__ == "__main__":
     main()

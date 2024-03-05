@@ -239,7 +239,8 @@ def get_option_symbol(strike=19950, option_type = "PE" ):
 
 
 @retry(tries=5, delay=5, backoff=2)
-def create_bull_put_spread(conn: ConnectToIntegrate):
+def create_bull_put_spread(api_token, api_secret):
+    conn = login_to_integrate(api_token, api_secret)
     option_type = "PE"
     atm = get_nifty_atm(conn)
     nifty_close = get_nifty_close(conn)
@@ -289,7 +290,8 @@ def record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, trend, nifty_
 
 
 @retry(tries=5, delay=5, backoff=2)
-def create_bear_call_spread(conn: ConnectToIntegrate):
+def create_bear_call_spread(api_token, api_secret):
+    conn = login_to_integrate(api_token, api_secret)
     option_type = "CE"
     atm = get_nifty_atm(conn)
     nifty_close = get_nifty_close(conn)
@@ -316,9 +318,10 @@ def calculate_pnl(quantity, long_entry, long_exit, short_entry, short_exit):
     return round(pnl, 2)
 
 @retry(tries=5, delay=5, backoff=2)
-def close_active_positions(conn: ConnectToIntegrate):
+def close_active_positions(api_token, api_secret):
     print("Closing active positions")
     notify("Closing active positions", "closing all the option positions")
+    conn = login_to_integrate(api_token, api_secret)
     active_strategies = strategies.find({'strategy_state': 'active'})
     for strategy in active_strategies:
         buy_order = place_buy_order(conn, strategy['short_option_symbol'], strategy['quantity'])
@@ -339,7 +342,6 @@ def close_active_positions(conn: ConnectToIntegrate):
 def main():
     api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
     api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
-    conn = login_to_integrate(api_token, api_secret)
     notify("Nifty Positional bot kicked off", "Monitoring started")
     print("Nifty Positional bot kicked off, Monitoring started")
     while True:
@@ -353,20 +355,20 @@ def main():
                 for strategy in active_strategies:
                     if strategy['trend'] != get_supertrend_direction():
                         notify("Supertrend Direction Changed", get_supertrend_direction())
-                        close_active_positions(conn)
+                        close_active_positions(api_token, api_secret)
                         break
                     if current_time > datetime.time(hour=15, minute=00) and strategy['expiry'] == str(datetime.now().date()):
                         notify("Today is Expiry!", "Rolling over positions to next expiry")
-                        close_active_positions(conn)
+                        close_active_positions(api_token, api_secret)
                         break
                     if strategy['trend'] == get_supertrend_direction():
-                        time.sleep(30)
+                        time.sleep(10)
                         continue
             else:
                 if get_supertrend_direction() == 'Bullish':
-                    create_bull_put_spread(conn)
+                    create_bull_put_spread(api_token, api_secret)
                 elif get_supertrend_direction() == 'Bearish':
-                    create_bear_call_spread(conn)
+                    create_bear_call_spread(api_token, api_secret)
         
         if current_time > trade_end_time:
             notify("Closing Bell", "Bot will exit now")
