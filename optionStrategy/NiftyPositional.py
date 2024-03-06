@@ -14,6 +14,7 @@ import datetime
 from datetime import timedelta
 from dateutil import parser
 import pandas as pd
+from slack_sdk import WebClient
 pd.set_option('display.max_rows', None)
 
 """
@@ -46,35 +47,21 @@ strategies = mongo_client['Bots'][strategies_collection_name]
 orders = mongo_client['Bots'][orders_collection_name]  # orders collection
 # trade_diary collection
 trade_diary = mongo_client['Bots'][trade_diary_collection_name]
+slack_client = WebClient(token='xoxb-4845492646177-6765730768929-As0WGXYuBUlGTIHDFdgbM5oO')
 
 
 basicConfig(level=INFO)
 logger = getLogger()
 
 @retry(tries=5, delay=5, backoff=2)
-def notify(title, message, color="#00FF00"):
+def notify(message):
     channel = "#" + slack_channel
-    slack_data = {
-        "username": "TradeBot",
-        "icon_emoji": ":ghost:",
-        "channel": channel,
-        "attachments": [
-            {
-                "color": color,
-                "fields": [
-                    {
-                        "title": title,
-                        "value": message,
-                        "short": "false",
-                    }
-                ]
-            }
-        ]
-    }
-    byte_length = str(sys.getsizeof(slack_data))
-    headers = {'Content-Type': "application/json",
-               'Content-Length': byte_length}
-    requests.post(slack_url, data=json.dumps(slack_data), headers=headers)
+    slack_client.chat_postMessage(
+        channel=channel, 
+        text=message, 
+        username="TradeBot",
+        icon_emoji=":chart_with_upwards_trend:"
+    )
 
 
 @retry(tries=5, delay=5, backoff=2)
@@ -87,7 +74,7 @@ def login_to_integrate(api_token: str, api_secret: str) -> ConnectToIntegrate:
     totp = pyotp.TOTP("NZKUOQTJKBAVK3KNPBYUMRDTOBWUU2KV").now()
     conn.login(api_token=api_token, api_secret=api_secret, totp=totp)
     print("Connected successfully with Definedge API's")
-    notify("Connection Established!", "Connected successfully with Definedge API's")
+    notify("Connected successfully with Definedge API's")
     return conn
 
 
@@ -137,7 +124,7 @@ def place_buy_order(conn: ConnectToIntegrate, symbol, qty):
         raise Exception("Error in placing order - " +
                     str(order['message']))
     print(f"Order placed: {order}")
-    notify("Order placed:", str(order))
+    notify(f"Order placed: {order}")
     orders.insert_one(order)
     return order
 
@@ -163,7 +150,7 @@ def place_sell_order(conn: ConnectToIntegrate, symbol, qty):
         raise Exception("Error in placing order - " +
                     str(order['message']))
     print(f"Order placed: {order}")
-    notify("Order placed:", str(order))
+    notify(f"Order placed: {order}")
     orders.insert_one(order)
     return order
 
@@ -186,7 +173,7 @@ def get_nifty_close(conn: ConnectToIntegrate):
     end = datetime.datetime.today()
     df = fetch_historical_data(conn, exchange, trading_symbol, start, end)
     print(f"nifty close: {df.iloc[-1]['close']}")
-    notify("nifty close",str(df.iloc[-1]['close']))
+    notify(f"nifty close: {df.iloc[-1]['close']}")
     return df.iloc[-1]['close']
 
 
@@ -257,7 +244,7 @@ def create_bull_put_spread(api_token, api_secret):
         sell_order = place_sell_order(conn, sell_strike_symbol, quantity)
     short_option_cost = sell_order['average_traded_price']
     long_option_cost = buy_order['average_traded_price']
-    notify("New position alert!", "created bull put spread!")
+    notify("created bull put spread!")
     record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, "Bullish", nifty_close, expiry, short_option_cost, long_option_cost)
     return buy_order['order_id'], sell_order['order_id']
 
@@ -308,27 +295,27 @@ def create_bear_call_spread(api_token, api_secret):
         sell_order = place_sell_order(conn, sell_strike_symbol, quantity)
     short_option_cost = sell_order['average_traded_price']
     long_option_cost = buy_order['average_traded_price']
-    notify("New position alert!", "created bear call spread!")
+    notify("created bear call spread!")
     record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, "Bearish", nifty_close, expiry, short_option_cost, long_option_cost)
     return buy_order['order_id'], sell_order['order_id']
 
 def calculate_pnl(quantity, long_entry, long_exit, short_entry, short_exit):
     pnl = float(quantity) * ((float(short_entry) - float(short_exit)) + (float(long_exit) - float(long_entry)))
-    notify("Realized Gains:", str(round(pnl, 2)))
+    notify(f"Realized Gains: {round(pnl, 2)}")
     return round(pnl, 2)
 
 @retry(tries=5, delay=5, backoff=2)
 def close_active_positions(api_token, api_secret):
     print("Closing active positions")
-    notify("Closing active positions", "closing all the option positions")
+    notify("Closing active positions")
     conn = login_to_integrate(api_token, api_secret)
     active_strategies = strategies.find({'strategy_state': 'active'})
     for strategy in active_strategies:
         buy_order = place_buy_order(conn, strategy['short_option_symbol'], strategy['quantity'])
-        notify("Closing Alert!", "Short option leg closed")
+        notify("Short option leg closed")
         if buy_order['order_status'] == "COMPLETE":
             sell_order = place_sell_order(conn, strategy['long_option_symbol'], strategy['quantity'])
-            notify("Closing Alert!", "Long option leg closed")
+            notify("Long option leg closed")
             strategies.update_one({'_id': strategy['_id']}, {'$set': {'strategy_state': 'closed'}})
             strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_date': str(datetime.datetime.now().date())}})
             strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_time': datetime.datetime.now().strftime('%H:%M')}})
@@ -342,8 +329,8 @@ def close_active_positions(api_token, api_secret):
 def main():
     api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
     api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
-    notify("Nifty Positional bot kicked off", "Monitoring started")
-    print("Nifty Positional bot kicked off, Monitoring started")
+    notify("Nifty Positional bot kicked off")
+    print("Nifty Positional bot kicked off")
     while True:
         current_time = datetime.datetime.now().time()
         print(f"current time: {current_time}")
@@ -354,11 +341,11 @@ def main():
                     {'strategy_state': 'active'})
                 for strategy in active_strategies:
                     if strategy['trend'] != get_supertrend_direction():
-                        notify("Supertrend Direction Changed", get_supertrend_direction())
+                        notify(f"Supertrend Direction Changed to {get_supertrend_direction()}")
                         close_active_positions(api_token, api_secret)
                         break
                     if current_time > datetime.time(hour=15, minute=00) and strategy['expiry'] == str(datetime.now().date()):
-                        notify("Today is Expiry!", "Rolling over positions to next expiry")
+                        notify("Rolling over positions to next expiry")
                         close_active_positions(api_token, api_secret)
                         break
                     if strategy['trend'] == get_supertrend_direction():
@@ -371,7 +358,7 @@ def main():
                     create_bear_call_spread(api_token, api_secret)
         
         if current_time > trade_end_time:
-            notify("Closing Bell", "Bot will exit now")
+            notify("Closing Bell, Bot will exit now")
             return   
         time.sleep(10)
 if __name__ == "__main__":
