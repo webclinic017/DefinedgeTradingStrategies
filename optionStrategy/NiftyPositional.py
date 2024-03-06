@@ -47,7 +47,7 @@ strategies = mongo_client['Bots'][strategies_collection_name]
 orders = mongo_client['Bots'][orders_collection_name]  # orders collection
 # trade_diary collection
 trade_diary = mongo_client['Bots'][trade_diary_collection_name]
-slack_client = WebClient(token='xoxb-4845492646177-6765730768929-As0WGXYuBUlGTIHDFdgbM5oO')
+slack_client = WebClient(token=os.environ.get('slack_client'))
 
 
 basicConfig(level=INFO)
@@ -57,12 +57,12 @@ logger = getLogger()
 def notify(message):
     channel = "#" + slack_channel
     print(message)
-    # slack_client.chat_postMessage(
-    #     channel=channel, 
-    #     text=message, 
-    #     username="TradeBot",
-    #     icon_emoji=":chart_with_upwards_trend:"
-    # )
+    slack_client.chat_postMessage(
+        channel=channel, 
+        text=message, 
+        username="TradeBot",
+        icon_emoji=":chart_with_upwards_trend:"
+    )
 
 
 @retry(tries=5, delay=5, backoff=2)
