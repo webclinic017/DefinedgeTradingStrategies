@@ -56,12 +56,13 @@ logger = getLogger()
 @retry(tries=5, delay=5, backoff=2)
 def notify(message):
     channel = "#" + slack_channel
-    slack_client.chat_postMessage(
-        channel=channel, 
-        text=message, 
-        username="TradeBot",
-        icon_emoji=":chart_with_upwards_trend:"
-    )
+    print(message)
+    # slack_client.chat_postMessage(
+    #     channel=channel, 
+    #     text=message, 
+    #     username="TradeBot",
+    #     icon_emoji=":chart_with_upwards_trend:"
+    # )
 
 
 @retry(tries=5, delay=5, backoff=2)
