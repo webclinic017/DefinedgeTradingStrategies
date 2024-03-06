@@ -345,7 +345,7 @@ def main():
                         notify(f"Supertrend Direction Changed to {get_supertrend_direction()}")
                         close_active_positions(api_token, api_secret)
                         break
-                    if current_time > datetime.time(hour=15, minute=00) and strategy['expiry'] == str(datetime.now().date()):
+                    if current_time > datetime.time(hour=15, minute=00) and strategy['expiry'] == str(datetime.datetime.now().date()):
                         notify("Rolling over positions to next expiry")
                         close_active_positions(api_token, api_secret)
                         break
