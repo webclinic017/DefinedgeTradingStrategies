@@ -105,6 +105,14 @@ def get_supertrend_direction():
 
 
 @retry(tries=5, delay=5, backoff=2)
+def get_supertrend_value():
+    supertrend_collection = mongo_client['Bots']["supertrend"]
+    supertrend = supertrend_collection.find_one({"_id": "supertrend"})
+    print(f"Super Trend Value: {supertrend['value']}")
+    return supertrend["value"]
+
+
+@retry(tries=5, delay=5, backoff=2)
 def place_buy_order(conn: ConnectToIntegrate, symbol, qty):
     io = IntegrateOrders(conn)
     order = io.place_order(
@@ -181,7 +189,8 @@ def get_nifty_close(conn: ConnectToIntegrate):
 
 @retry(tries=5, delay=5, backoff=2)
 def get_nifty_atm(conn: ConnectToIntegrate):
-    return round(50 * round(float(get_nifty_close(conn))/50), 2)
+    #return round(50 * round(float(get_nifty_close(conn))/50), 2)
+    return round(50 * round(float(get_supertrend_value())/50), 2)
 
 
 
@@ -233,7 +242,7 @@ def create_bull_put_spread(api_token, api_secret):
     atm = get_nifty_atm(conn)
     nifty_close = get_nifty_close(conn)
     sell_strike = atm + 50
-    buy_strike = sell_strike - 150
+    buy_strike = sell_strike - 350
     sell_strike_symbol, expiry = get_option_symbol(sell_strike, option_type)
     buy_strike_symbol, expiry = get_option_symbol(buy_strike, option_type)
     print(expiry)
@@ -284,7 +293,7 @@ def create_bear_call_spread(api_token, api_secret):
     atm = get_nifty_atm(conn)
     nifty_close = get_nifty_close(conn)
     sell_strike = atm - 50
-    buy_strike = sell_strike + 150
+    buy_strike = sell_strike + 350
     sell_strike_symbol, expiry = get_option_symbol(sell_strike, option_type)
     buy_strike_symbol, expiry = get_option_symbol(buy_strike, option_type)
     print(expiry)
