@@ -27,14 +27,15 @@ trade_start_time = parser.parse("9:29:00").time()
 trade_end_time = parser.parse(str(os.environ.get('trade_end_time'))).time()
 """
 
-slack_url = "https://hooks.slack.com/services/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"
-
 slack_channel = "niftyweekly"
 CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongodb.net/?retryWrites=true&w=majority"  # Mongo Connection
 user_name = "sugam"
 quantity = '50'
 trade_start_time = parser.parse("9:20:00").time()
 trade_end_time = parser.parse("15:25:00").time()
+
+api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
+api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
 
 mongo_client = MongoClient(CONNECTION_STRING)
 
@@ -189,7 +190,6 @@ def get_nifty_close(conn: ConnectToIntegrate):
 
 @retry(tries=5, delay=5, backoff=2)
 def get_nifty_atm(conn: ConnectToIntegrate):
-    #return round(50 * round(float(get_nifty_close(conn))/50), 2)
     return round(50 * round(float(get_supertrend_value())/50), 2)
 
 
@@ -226,7 +226,7 @@ def get_option_symbol(strike=19950, option_type = "PE" ):
     # Calculate the start and end dates of the current week
     start_of_week = current_date - timedelta(days=current_date.weekday())
     end_of_week = start_of_week + timedelta(days=12)
-    df= df[(df['EXPIRY'] >= start_of_week) & (df['EXPIRY'] >= current_date) & (df['EXPIRY'] <= end_of_week)]
+    df= df[(df['EXPIRY'] >= start_of_week) & (df['EXPIRY'] > (current_date + timedelta(days=1))) & (df['EXPIRY'] <= end_of_week)]
     df = df.head(1)
     print("Getting options Symbol...")
     print(f"Symbol: {df['TRADINGSYM'].values[0]} , Expiry: {df['EXPIRY'].values[0]}")
@@ -337,8 +337,6 @@ def close_active_positions(api_token, api_secret):
 
 
 def main():
-    api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
-    api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
     notify("Nifty Positional bot kicked off")
     print("Nifty Positional bot kicked off")
     while True:
@@ -354,6 +352,17 @@ def main():
                         notify(f"Supertrend Direction Changed to {get_supertrend_direction()}")
                         close_active_positions(api_token, api_secret)
                         break
+
+                    if strategy['trend'] == 'Bullish' and get_supertrend_value() > (strategy['nifty_close']):
+                        notify("Nifty moved 200 points, shifting the strikes")
+                        close_active_positions(api_token, api_secret)
+                        break
+
+                    if strategy['trend'] == 'Bearish' and get_supertrend_value() < (strategy['nifty_close']):
+                        notify("Nifty moved 200 points, shifting the strikes")
+                        close_active_positions(api_token, api_secret)
+                        break
+
                     if current_time > datetime.time(hour=15, minute=00) and strategy['expiry'] == str(datetime.datetime.now().date()):
                         notify("Rolling over positions to next expiry")
                         close_active_positions(api_token, api_secret)
