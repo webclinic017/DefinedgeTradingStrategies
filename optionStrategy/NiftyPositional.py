@@ -339,6 +339,8 @@ def close_active_positions(api_token, api_secret):
 def main():
     notify("Nifty Positional bot kicked off")
     print("Nifty Positional bot kicked off")
+    notify(f"Supertrend Direction: {get_supertrend_direction()}")
+    notify(f"Supertrend Value: {get_supertrend_value()}")
     while True:
         current_time = datetime.datetime.now().time()
         print(f"current time: {current_time}")
