@@ -369,9 +369,6 @@ def main():
                         notify("Rolling over positions to next expiry")
                         close_active_positions(api_token, api_secret)
                         break
-                    if strategy['trend'] == get_supertrend_direction():
-                        time.sleep(10)
-                        continue
             else:
                 if get_supertrend_direction() == 'Bullish':
                     create_bull_put_spread(api_token, api_secret)
@@ -381,6 +378,6 @@ def main():
         if current_time > trade_end_time:
             notify("Closing Bell, Bot will exit now")
             return   
-        time.sleep(10)
+        time.sleep(20)
 if __name__ == "__main__":
     main()
