@@ -320,13 +320,12 @@ def calculate_pnl(quantity, long_entry, long_exit, short_entry, short_exit):
 def close_active_positions(api_token, api_secret):
     print("Closing active positions")
     notify("Closing active positions")
-    conn = login_to_integrate(api_token, api_secret)
     active_strategies = strategies.find({'strategy_state': 'active'})
     for strategy in active_strategies:
-        buy_order = place_buy_order(conn, strategy['short_option_symbol'], strategy['quantity'])
+        buy_order = place_buy_order(api_token, api_secret, strategy['short_option_symbol'], strategy['quantity'])
         notify("Short option leg closed")
         if buy_order['order_status'] == "COMPLETE":
-            sell_order = place_sell_order(conn, strategy['long_option_symbol'], strategy['quantity'])
+            sell_order = place_sell_order(api_token, api_secret, strategy['long_option_symbol'], strategy['quantity'])
             notify("Long option leg closed")
             strategies.update_one({'_id': strategy['_id']}, {'$set': {'strategy_state': 'closed'}})
             strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_date': str(datetime.datetime.now().date())}})
