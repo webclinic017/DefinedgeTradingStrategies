@@ -114,7 +114,8 @@ def get_supertrend_value():
 
 
 @retry(tries=5, delay=5, backoff=2)
-def place_buy_order(conn: ConnectToIntegrate, symbol, qty):
+def place_buy_order(api_token, api_secret, symbol, qty):
+    conn = login_to_integrate(api_token, api_secret)
     io = IntegrateOrders(conn)
     order = io.place_order(
         exchange=conn.EXCHANGE_TYPE_NFO,
@@ -140,7 +141,8 @@ def place_buy_order(conn: ConnectToIntegrate, symbol, qty):
 
 
 @retry(tries=5, delay=5, backoff=2)
-def place_sell_order(conn: ConnectToIntegrate, symbol, qty):
+def place_sell_order(api_token, api_secret, symbol, qty):
+    conn = login_to_integrate(api_token, api_secret)
     io = IntegrateOrders(conn)
     order = io.place_order(
         exchange=conn.EXCHANGE_TYPE_NFO,
@@ -206,7 +208,7 @@ def load_csv_from_zip(url='https://app.definedgesecurities.com/public/allmaster.
         csv_name = thezip.namelist()[0]
         # Extract and read the CSV file into a pandas DataFrame
         with thezip.open(csv_name) as csv_file:
-            df = pd.read_csv(csv_file, header=None, names=column_names, low_memory=False)
+            df = pd.read_csv(csv_file, header=None, names=column_names, low_memory=False, on_bad_lines='skip')
     df = df[(df['SEGMENT'] == 'NFO') & (df['INSTRUMENT TYPE'] == 'OPTIDX')]
     df = df[(df['SYMBOL'].str.startswith('NIFTY'))]
     df['EXPIRY'] = pd.to_datetime(df['EXPIRY'], format='%d%m%Y', errors='coerce')
@@ -249,9 +251,9 @@ def create_bull_put_spread(api_token, api_secret):
     expiry = str(expiry)
     expiry = parser.parse(expiry).date()
     print(expiry)
-    buy_order = place_buy_order(conn, buy_strike_symbol, quantity)
+    buy_order = place_buy_order(api_token, api_secret, buy_strike_symbol, quantity)
     if buy_order['order_status'] == "COMPLETE":
-        sell_order = place_sell_order(conn, sell_strike_symbol, quantity)
+        sell_order = place_sell_order(api_token, api_secret, sell_strike_symbol, quantity)
     short_option_cost = sell_order['average_traded_price']
     long_option_cost = buy_order['average_traded_price']
     notify("created bull put spread!")
@@ -300,9 +302,9 @@ def create_bear_call_spread(api_token, api_secret):
     expiry = str(expiry)
     expiry = parser.parse(expiry).date()
     print(expiry)
-    buy_order = place_buy_order(conn, buy_strike_symbol, quantity)
+    buy_order = place_buy_order(api_token, api_secret, buy_strike_symbol, quantity)
     if buy_order['order_status'] == "COMPLETE":
-        sell_order = place_sell_order(conn, sell_strike_symbol, quantity)
+        sell_order = place_sell_order(api_token, api_secret, sell_strike_symbol, quantity)
     short_option_cost = sell_order['average_traded_price']
     long_option_cost = buy_order['average_traded_price']
     notify("created bear call spread!")
