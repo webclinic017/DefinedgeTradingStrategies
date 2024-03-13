@@ -169,7 +169,7 @@ def main():
             trading_symbol = "Nifty 50"
             frequency = '15T'
             # Calculate 10 days ago from today
-            ten_days_ago = datetime.now() - timedelta(days=5)
+            ten_days_ago = datetime.now() - timedelta(days=21)
 
             # Set the time to 9:15 AM on that date
             start = ten_days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
