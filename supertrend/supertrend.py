@@ -129,7 +129,6 @@ def supertrend(df: pd.DataFrame, period: int, multiplier: int):
                 df['signal'][current] = "Bearish"
     
     df['value'] = df['value'].round(2)
-    print(df)
     df.drop(['open', 'high', 'low', 'basic_upperband', 'basic_lowerband', 'hl2', 'final_upperband', 'final_lowerband', 'volume', 'in_uptrend', 'ATR'], axis='columns', inplace=True)
 
     return df
@@ -168,12 +167,11 @@ def main():
             exchange = "NSE"
             trading_symbol = "Nifty 50"
             frequency = '15T'
-            # Calculate 10 days ago from today
-            ten_days_ago = datetime.now() - timedelta(days=21)
+            # Calculate 60 days ago from today
+            ten_days_ago = datetime.now() - timedelta(days=60)
 
             # Set the time to 9:15 AM on that date
             start = ten_days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
-            #start = datetime(2024, 2, 13, 9, 15)
             end = datetime.today()
 
             conn = login_to_integrate(api_token, api_secret)
@@ -184,14 +182,11 @@ def main():
             df_15min['ATR'] = atr(df_15min, 10)
             df_15min= supertrend(df_15min, 10, 4)
             print(df_15min.iloc[-2])
-            #notify("Fetching SuperTrend:",str(df_15min.iloc[-2]) , "#FF0000")
-            #print(df_15min)
 
             if supertrend_collection.count_documents({"_id": "supertrend"}) == 0:
                 st = {"_id": "supertrend", "datetime": df_15min.iloc[-2]['datetime'],
                             "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "signal": df_15min.iloc[-2]['signal']}
                 supertrend_collection.insert_one(st)
-                notify("Strategy details recorded for monitoring", str(st))
             else:
                 supertrend_collection.update_one({'_id': "supertrend"}, {'$set': {"datetime": df_15min.iloc[-2]['datetime'],
                             "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "signal": df_15min.iloc[-2]['signal']}})
