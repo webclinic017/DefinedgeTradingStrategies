@@ -280,7 +280,7 @@ def record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, trend, nifty_
     'long_option_cost' : long_option_cost,
     'entry_time' : datetime.datetime.now().strftime('%H:%M'),
     'exit_time' : '',
-    'nifty_close' : nifty_close,
+    'nifty_close' : round(nifty_close,2),
     'expiry' : str(expiry),
     'pnl': ''
     }
