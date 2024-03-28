@@ -189,7 +189,7 @@ def main():
                 supertrend_collection.insert_one(st)
             else:
                 supertrend_collection.update_one({'_id': "supertrend"}, {'$set': {"datetime": df_15min.iloc[-2]['datetime'],
-                            "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-1]['value'], "signal": df_15min.iloc[-2]['signal']}})
+                            "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "signal": df_15min.iloc[-2]['signal']}})
         
         print("repeating loop for Supertrend")
         if current_time > trade_end_time:
