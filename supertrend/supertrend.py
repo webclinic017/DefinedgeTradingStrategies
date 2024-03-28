@@ -23,7 +23,7 @@ slack_url = "https://hooks.slack.com/services/T04QVEGK057/B05BJSS93HR/iBOHI2hpkd
 slack_channel = "straddlebot"
 CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongodb.net/?retryWrites=true&w=majority" #Mongo Connection
 trade_end_time = parser.parse("15:25:00").time()
-trade_start_time = parser.parse("9:16:00").time()
+trade_start_time = parser.parse("09:16:00").time()
 
 mongo_client = MongoClient(CONNECTION_STRING)
 collection_name = "supertrend"
@@ -185,11 +185,11 @@ def main():
 
             if supertrend_collection.count_documents({"_id": "supertrend"}) == 0:
                 st = {"_id": "supertrend", "datetime": df_15min.iloc[-2]['datetime'],
-                            "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "signal": df_15min.iloc[-2]['signal']}
+                            "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "running_value": df_15min.iloc[-1]['value'], "signal": df_15min.iloc[-2]['signal']}
                 supertrend_collection.insert_one(st)
             else:
                 supertrend_collection.update_one({'_id': "supertrend"}, {'$set': {"datetime": df_15min.iloc[-2]['datetime'],
-                            "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "signal": df_15min.iloc[-2]['signal']}})
+                            "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "running_value": df_15min.iloc[-1]['value'], "signal": df_15min.iloc[-2]['signal']}})
         
         print("repeating loop for Supertrend")
         if current_time > trade_end_time:

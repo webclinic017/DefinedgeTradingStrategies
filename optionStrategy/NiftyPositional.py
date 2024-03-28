@@ -112,6 +112,13 @@ def get_supertrend_value():
     print(f"Super Trend Value: {supertrend['value']}")
     return supertrend["value"]
 
+@retry(tries=5, delay=5, backoff=2)
+def get_supertrend_running_value():
+    supertrend_collection = mongo_client['Bots']["supertrend"]
+    supertrend = supertrend_collection.find_one({"_id": "supertrend"})
+    print(f"Super Trend Running Value: {supertrend['running_value']}")
+    return supertrend["running_value"]
+
 
 @retry(tries=5, delay=5, backoff=2)
 def get_supertrend_close():
@@ -200,7 +207,7 @@ def get_nifty_close(conn: ConnectToIntegrate):
 
 @retry(tries=5, delay=5, backoff=2)
 def get_nifty_atm(conn: ConnectToIntegrate):
-    return round(50 * round(float(get_supertrend_value())/50), 2)
+    return round(50 * round(float(get_supertrend_running_value())/50), 2)
 
 
 
