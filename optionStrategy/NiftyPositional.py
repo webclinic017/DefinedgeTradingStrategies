@@ -114,6 +114,14 @@ def get_supertrend_value():
 
 
 @retry(tries=5, delay=5, backoff=2)
+def get_supertrend_close():
+    supertrend_collection = mongo_client['Bots']["supertrend"]
+    supertrend = supertrend_collection.find_one({"_id": "supertrend"})
+    print(f"Super Trend close: {supertrend['close']}")
+    return supertrend["close"]
+
+
+@retry(tries=5, delay=5, backoff=2)
 def place_buy_order(api_token, api_secret, symbol, qty):
     conn = login_to_integrate(api_token, api_secret)
     io = IntegrateOrders(conn)
@@ -242,8 +250,8 @@ def create_bull_put_spread(api_token, api_secret):
     conn = login_to_integrate(api_token, api_secret)
     option_type = "PE"
     atm = get_nifty_atm(conn)
-    nifty_close = get_nifty_close(conn)
-    sell_strike = atm + 50
+    nifty_close = get_supertrend_close()
+    sell_strike = atm
     buy_strike = sell_strike - 350
     sell_strike_symbol, expiry = get_option_symbol(sell_strike, option_type)
     buy_strike_symbol, expiry = get_option_symbol(buy_strike, option_type)
@@ -293,8 +301,8 @@ def create_bear_call_spread(api_token, api_secret):
     conn = login_to_integrate(api_token, api_secret)
     option_type = "CE"
     atm = get_nifty_atm(conn)
-    nifty_close = get_nifty_close(conn)
-    sell_strike = atm - 50
+    nifty_close = get_supertrend_close()
+    sell_strike = atm
     buy_strike = sell_strike + 350
     sell_strike_symbol, expiry = get_option_symbol(sell_strike, option_type)
     buy_strike_symbol, expiry = get_option_symbol(buy_strike, option_type)
@@ -356,12 +364,12 @@ def main():
                         close_active_positions(api_token, api_secret)
                         break
 
-                    if strategy['trend'] == 'Bullish' and get_supertrend_value() > (strategy['nifty_close'] + 50):
+                    if strategy['trend'] == 'Bullish' and get_supertrend_value() > (strategy['nifty_close']):
                         notify("Nifty moved 200 points, shifting the strikes")
                         close_active_positions(api_token, api_secret)
                         break
 
-                    if strategy['trend'] == 'Bearish' and get_supertrend_value() < (strategy['nifty_close'] - 50):
+                    if strategy['trend'] == 'Bearish' and get_supertrend_value() < (strategy['nifty_close']):
                         notify("Nifty moved 200 points, shifting the strikes")
                         close_active_positions(api_token, api_secret)
                         break
@@ -379,6 +387,6 @@ def main():
         if current_time > trade_end_time:
             notify("Closing Bell, Bot will exit now")
             return   
-        time.sleep(20)
+        time.sleep(10)
 if __name__ == "__main__":
     main()
