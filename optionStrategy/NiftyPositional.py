@@ -364,12 +364,12 @@ def main():
                         close_active_positions(api_token, api_secret)
                         break
 
-                    if strategy['trend'] == 'Bullish' and get_supertrend_value() > (strategy['nifty_close']):
+                    if strategy['trend'] == 'Bullish' and get_supertrend_value() > (strategy['nifty_close'] + 25):
                         notify("Nifty moved 200 points, shifting the strikes")
                         close_active_positions(api_token, api_secret)
                         break
 
-                    if strategy['trend'] == 'Bearish' and get_supertrend_value() < (strategy['nifty_close']):
+                    if strategy['trend'] == 'Bearish' and get_supertrend_value() < (strategy['nifty_close'] - 25):
                         notify("Nifty moved 200 points, shifting the strikes")
                         close_active_positions(api_token, api_secret)
                         break
