@@ -13,6 +13,7 @@ ENV api_secret="xyz"
 ENV instrument_name="xyz"
 ENV trading_symbol="xyz"
 ENV quantity=50
+ENV sl_factor=.001
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN echo $(date)
 # Copy files to working directory

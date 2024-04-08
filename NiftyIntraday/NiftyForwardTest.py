@@ -18,6 +18,7 @@ api_secret = os.environ.get('api_secret')
 instrument_name = os.environ.get('instrument_name')
 trading_symbol = os.environ.get('trading_symbol')
 quantity = os.environ.get('quantity')
+sl_factor = os.environ.get('sl_factor')
  
 """
 slack_channel = "niftyweekly"
@@ -28,6 +29,7 @@ api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
 instrument_name = "NIFTY"
 trading_symbol = "Nifty 50"
 quantity = 50
+sl_factor = .001
 """
 
 frequency = '15T'
@@ -144,7 +146,7 @@ def main():
                         return
                     if df_1min.iloc[-1]['close'] > high_15min:
                         entry_price = df_1min.iloc[-1]['close']
-                        aboslute_sl = util.round_to_nearest((0.001 * entry_price), base=0.05)
+                        aboslute_sl = util.round_to_nearest((sl_factor * entry_price), base=0.05)
                         sl_price = util.round_to_nearest((entry_price - aboslute_sl), base=0.05)
                         entry_time = df_1min.iloc[-1]['datetime'].strftime('%H:%M')
                         util.notify(message=f"New Bullish Entry Recorded: {instrument_name}", slack_client=slack_client)
@@ -175,7 +177,7 @@ def main():
                         return
                     if df_1min.iloc[-1]['close'] < low_15min:
                         entry_price = df_1min.iloc[-1]['close']
-                        aboslute_sl = util.round_to_nearest((0.001 * entry_price), base=0.05)
+                        aboslute_sl = util.round_to_nearest((sl_factor * entry_price), base=0.05)
                         sl_price = util.round_to_nearest((entry_price + aboslute_sl), base=0.05)
                         entry_time = df_1min.iloc[-1]['datetime'].strftime('%H:%M')
                         util.notify(message=f"New Bearish Entry Recorded: {instrument_name}", slack_client=slack_client)

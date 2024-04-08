@@ -26,16 +26,16 @@ trade_end_time = parser.parse("15:25:00").time()
 trade_start_time = parser.parse("09:16:00").time()
 
 mongo_client = MongoClient(CONNECTION_STRING)
-slack_client = util.get_slack_client('')
+
 
 
 def main():
     print("Backtesting Started")
-    util.notify("Backtesting Started",slack_channel = slack_channel, slack_client = slack_client)
     api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
     api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
     exchange = "NSE"
-    trading_symbol = "Nifty 50"
+    trading_symbol = "Nifty Bank"
+    sl_perc = .0025
     frequency = '15T'
     # Calculate 60 days ago from today
     days_ago = datetime.now() - timedelta(days=180)
@@ -89,7 +89,7 @@ def main():
                 if row['close'] > high and traded == False:
                     traded = True
                     entry = row['close']
-                    initial_sl = util.round_to_nearest((0.001 * entry), base=0.05)
+                    initial_sl = util.round_to_nearest((sl_perc * entry), base=0.05)
                     sl = util.round_to_nearest((entry - initial_sl), base=0.05)
                     entry_time = row['datetime'].strftime('%H:%M')
                     print()
@@ -156,7 +156,7 @@ def main():
                 if row['close'] < low and traded == False:
                     traded = True
                     entry = row['close']
-                    initial_sl = util.round_to_nearest((0.001 * entry), base=0.05)
+                    initial_sl = util.round_to_nearest((sl_perc * entry), base=0.05)
                     sl = util.round_to_nearest((entry + initial_sl), base=0.05)
                     entry_time = row['datetime'].strftime('%H:%M')
                     print()
