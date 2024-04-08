@@ -17,7 +17,7 @@ RUN echo $(date)
 # Copy files to working directory
 COPY . /app/src/
 RUN cd ..
-COPY lib /app/src/
+COPY ./lib /app/src/
 WORKDIR /app
 # Install python packages using requirements.txt
 RUN pip install -r src/requirements.txt
