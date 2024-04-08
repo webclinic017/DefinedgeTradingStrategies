@@ -16,7 +16,6 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN echo $(date)
 # Copy files to working directory
 COPY . /app/src/
-RUN cd ..
 COPY ./lib /app/src/
 WORKDIR /app
 # Install python packages using requirements.txt
