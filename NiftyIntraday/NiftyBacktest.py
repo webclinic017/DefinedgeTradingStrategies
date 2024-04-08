@@ -1,18 +1,17 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+from lib import connect_definedge as edge
+from lib import utils as util
+
+import pandas as pd
 from datetime import datetime, timedelta
 from dateutil import parser
-import pandas as pd
+
 import numpy as np
 pd.set_option('display.max_rows', None)
-import time
-from logging import INFO, basicConfig, getLogger
-from integrate import ConnectToIntegrate, IntegrateData
-import requests
-import pyotp
-import sys
-import json
-import os
 from pymongo import MongoClient
-from pprint import pprint
+
 
 """
 slack_url = os.environ.get('slack_url')
@@ -21,81 +20,22 @@ CONNECTION_STRING = os.environ.get('CONNECTION_STRING')  #Mongo Connection
 trade_end_time = parser.parse(str(os.environ.get('trade_end_time'))).time()
 """
 
-slack_url = "https://hooks.slack.com/services/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"
-slack_channel = "straddlebot"
+slack_channel = "niftyweekly"
 CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongodb.net/?retryWrites=true&w=majority" #Mongo Connection
 trade_end_time = parser.parse("15:25:00").time()
 trade_start_time = parser.parse("09:16:00").time()
 
 mongo_client = MongoClient(CONNECTION_STRING)
-collection_name = "supertrend"
-
-backtest = mongo_client['Bots']["backtest"]
-
-basicConfig(level=INFO)
-logger = getLogger()
-
-def login_to_integrate(api_token: str, api_secret: str) -> ConnectToIntegrate:
-    """
-    NZKUOQTJKBAVK3KNPBYUMRDTOBWUU2KV
-    Login to Integrate and return the connection object.
-    """
-    conn = ConnectToIntegrate()
-    totp = pyotp.TOTP("NZKUOQTJKBAVK3KNPBYUMRDTOBWUU2KV").now()
-    conn.login(api_token=api_token, api_secret=api_secret, totp=totp)
-    return conn
-
-def fetch_historical_data(conn: ConnectToIntegrate, exchange: str, trading_symbol: str, start: datetime, end: datetime, interval = 'min') -> pd.DataFrame:
-    """
-    Fetch historical data and return as a pandas DataFrame.
-    """
-    if interval == 'day':
-        tf = conn.TIMEFRAME_TYPE_DAY
-    elif interval == 'min':
-        tf = conn.TIMEFRAME_TYPE_MIN
-
-    ic = IntegrateData(conn)
-    history = ic.historical_data(
-        exchange=exchange,
-        trading_symbol=trading_symbol,
-        timeframe=tf,  # Use the specific timeframe value
-        start=start,
-        end=end,
-    )
-    df = pd.DataFrame(list(history))  # Ensure conversion to list if generator
-    return df
-
-def round_to_nearest(x, base=0.05):
-    """
-    Round a number to the nearest specified multiple.
-    """
-    return round(base * round(float(x)/base), 2)
-
-def resample_ohlc_data(df: pd.DataFrame, frequency: str) -> pd.DataFrame:
-    """
-    Resample OHLC data to specified frequency and return the resulting DataFrame.
-    """
-    df['datetime'] = pd.to_datetime(df['datetime'])  # Ensure 'datetime' is in datetime format
-    df.set_index('datetime', inplace=True)
-    df_resampled = df.resample(frequency).agg({
-        'open': 'first',
-        'high': 'max',
-        'low': 'min',
-        'close': 'last',
-        'volume': 'sum'
-    }).dropna().reset_index()
-
-    for column in ['open', 'high', 'low', 'close']:
-        df_resampled[column] = df_resampled[column].apply(lambda x: round_to_nearest(x, base=0.05))
-    return df_resampled
+slack_client = util.get_slack_client('')
 
 
 def main():
     print("Backtesting Started")
+    util.notify("Backtesting Started",slack_channel = slack_channel, slack_client = slack_client)
     api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
     api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
     exchange = "NSE"
-    trading_symbol = "Nifty Fin Service"
+    trading_symbol = "Nifty 50"
     frequency = '15T'
     # Calculate 60 days ago from today
     days_ago = datetime.now() - timedelta(days=180)
@@ -104,8 +44,8 @@ def main():
     start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
     end = datetime.today()
 
-    conn = login_to_integrate(api_token, api_secret)
-    df_daily = fetch_historical_data(conn, exchange, trading_symbol, start, end, 'day')
+    conn = edge.login_to_integrate(api_token, api_secret)
+    df_daily = edge.fetch_historical_data(conn, exchange, trading_symbol, start, end, 'day')
     df_daily.drop(['volume'], axis='columns', inplace=True)
     df_daily['ema_low'] = df_daily['low'].ewm(com=10, min_periods = 21).mean() #Very close to TradingView
     df_daily['ema_high'] = df_daily['high'].ewm(com=10, min_periods = 21).mean() #Very close to TradingView
@@ -116,10 +56,10 @@ def main():
     df_daily['trend'] = np.where(df_daily['close'] <= df_daily['ema_low'], 'Bearish', 'Bullish')
     #print(df_daily)
 
-    df_15min = fetch_historical_data(conn, exchange, trading_symbol, start, end, 'min')
-    df_15min = resample_ohlc_data(df_15min, frequency)
+    df_15min = edge.fetch_historical_data(conn, exchange, trading_symbol, start, end, 'min')
+    df_15min = util.resample_ohlc_data(df_15min, frequency)
     df_15min.drop(['volume'], axis='columns', inplace=True)
-    df_1min = fetch_historical_data(conn, exchange, trading_symbol, start, end, 'min')
+    df_1min = edge.fetch_historical_data(conn, exchange, trading_symbol, start, end, 'min')
     df_1min['datetime'] = pd.to_datetime(df_1min['datetime'])
 
     df_daily_dic =  df_daily.to_dict(orient='records')
@@ -149,8 +89,8 @@ def main():
                 if row['close'] > high and traded == False:
                     traded = True
                     entry = row['close']
-                    initial_sl = round_to_nearest((0.001 * entry), base=0.05)
-                    sl = round_to_nearest((entry - initial_sl), base=0.05)
+                    initial_sl = util.round_to_nearest((0.001 * entry), base=0.05)
+                    sl = util.round_to_nearest((entry - initial_sl), base=0.05)
                     entry_time = row['datetime'].strftime('%H:%M')
                     print()
                     print("********************")
@@ -170,10 +110,10 @@ def main():
                             'entry_time': entry_time,
                             'Trade Type': day['trend'],
                             'entry': entry,
-                            'initial_sl': round_to_nearest((entry - initial_sl), base=0.05),
+                            'initial_sl': util.round_to_nearest((entry - initial_sl), base=0.05),
                             'trailing_sl': sl,
                             'exit': sl,
-                            'pnl': round_to_nearest((sl-entry), base=0.05),
+                            'pnl': util.round_to_nearest((sl-entry), base=0.05),
                             'exit_reason': 'SL/Trailing SL'
                         }
                         trades.append(trade)
@@ -184,10 +124,10 @@ def main():
                             'entry_time': entry_time,
                             'Trade Type': day['trend'],
                             'entry': entry,
-                            'initial_sl': round_to_nearest((entry - initial_sl), base=0.05),
+                            'initial_sl': util.round_to_nearest((entry - initial_sl), base=0.05),
                             'trailing_sl': sl,
                             'exit': row['close'],
-                            'pnl': round_to_nearest((row['close']-entry), base=0.05),
+                            'pnl': util.round_to_nearest((row['close']-entry), base=0.05),
                             'exit_reason': 'Closing Time'
                         }
                         trades.append(trade)
@@ -216,8 +156,8 @@ def main():
                 if row['close'] < low and traded == False:
                     traded = True
                     entry = row['close']
-                    initial_sl = round_to_nearest((0.001 * entry), base=0.05)
-                    sl = round_to_nearest((entry + initial_sl), base=0.05)
+                    initial_sl = util.round_to_nearest((0.001 * entry), base=0.05)
+                    sl = util.round_to_nearest((entry + initial_sl), base=0.05)
                     entry_time = row['datetime'].strftime('%H:%M')
                     print()
                     print("********************")
@@ -237,10 +177,10 @@ def main():
                             'entry_time': entry_time,
                             'Trade Type': day['trend'],
                             'entry': entry,
-                            'initial_sl': round_to_nearest((entry + initial_sl), base=0.05),
+                            'initial_sl': util.round_to_nearest((entry + initial_sl), base=0.05),
                             'trailing_sl': sl,
                             'exit': sl,
-                            'pnl': round_to_nearest((entry-sl), base=0.05),
+                            'pnl': util.round_to_nearest((entry-sl), base=0.05),
                             'exit_reason': 'SL/Trailing SL'
                         }
                         trades.append(trade)
@@ -251,10 +191,10 @@ def main():
                             'entry_time': entry_time,
                             'Trade Type': day['trend'],
                             'entry': entry,
-                            'initial_sl': round_to_nearest((entry + initial_sl), base=0.05),
+                            'initial_sl': util.round_to_nearest((entry + initial_sl), base=0.05),
                             'trailing_sl': sl,
                             'exit': row['close'],
-                            'pnl': round_to_nearest((entry-row['close']), base=0.05),
+                            'pnl': util.round_to_nearest((entry-row['close']), base=0.05),
                             'exit_reason': 'Closing Time'
                         }
                         trades.append(trade)
