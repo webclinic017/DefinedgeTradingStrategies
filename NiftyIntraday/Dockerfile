@@ -20,6 +20,5 @@ COPY ../lib /app/src/
 WORKDIR /app
 # Install python packages using requirements.txt
 RUN pip install -r src/requirements.txt
-
 # Run the script
 CMD python src/NiftyForwardTest.py
