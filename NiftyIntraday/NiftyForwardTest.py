@@ -17,6 +17,7 @@ api_token = os.environ.get('api_token')
 api_secret = os.environ.get('api_secret')
 instrument_name = os.environ.get('instrument_name')
 trading_symbol = os.environ.get('trading_symbol')
+quantity = os.environ.get('quantity')
  
 """
 slack_channel = "niftyweekly"
@@ -26,6 +27,7 @@ api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
 api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
 instrument_name = "NIFTY"
 trading_symbol = "Nifty 50"
+quantity = 50
 """
 
 frequency = '15T'
@@ -45,14 +47,14 @@ query = {'instrument_name': instrument_name, 'strategy_state': 'active'}
 
 def main():
     conn = edge.login_to_integrate(api_token, api_secret)
-    util.notify(message="Forward Testing Started!",slack_client=slack_client)
+    util.notify(message=f"Forward Testing Started: {instrument_name}",slack_client=slack_client)
     df_daily = edge.fetch_historical_data(conn, "NSE", trading_symbol, start, end, 'day')
     df_daily = ta.ema_channel(df_daily)
     daily_trend = df_daily.iloc[-1]['trend']
     today = datetime.now()
     today = today.replace(hour=9, minute=15, second=0, microsecond=0)
     future_symbol = edge.get_index_future(instrument_name=instrument_name)
-    util.notify(message=f"Trend on Daily Time Frame as per EMA channel is: {daily_trend}",slack_client=slack_client)
+    util.notify(message=f"{instrument_name} trend on Daily Time Frame as per EMA channel: {daily_trend}",slack_client=slack_client)
     high_15min = None
     low_15min = None
     iteration = 0
@@ -83,7 +85,8 @@ def main():
                         util.notify(message=f"Closing the position: {instrument_name}", slack_client=slack_client)
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'exit_time': datetime.now().strftime('%H:%M')}})
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'exit_price': pos['trailing_sl']}})
-                        f_test.update_one({'_id': pos['_id']}, {'$set': {'pnl': util.round_to_nearest((pos['trailing_sl']-pos['entry_price']), base=0.05)}})
+                        f_test.update_one({'_id': pos['_id']}, {'$set': {'points_captured': util.round_to_nearest((pos['trailing_sl']-pos['entry_price']), base=0.05)}})
+                        f_test.update_one({'_id': pos['_id']}, {'$set': {'pnl': util.round_to_nearest(((pos['trailing_sl']-pos['entry_price']) * quantity), base=0.05)}})
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'exit_reason': 'SL/Trailing SL'}})
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'strategy_state': 'closed'}})
                         return
@@ -91,7 +94,8 @@ def main():
                         util.notify(message=f"Closing the position: {instrument_name}", slack_client=slack_client)
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'exit_time': datetime.now().strftime('%H:%M')}})
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'exit_price': df_1min.iloc[-1]['close']}})
-                        f_test.update_one({'_id': pos['_id']}, {'$set': {'pnl': util.round_to_nearest((df_1min.iloc[-1]['close']-pos['entry_price']), base=0.05)}})
+                        f_test.update_one({'_id': pos['_id']}, {'$set': {'points_captured': util.round_to_nearest((df_1min.iloc[-1]['close']-pos['entry_price']), base=0.05)}})
+                        f_test.update_one({'_id': pos['_id']}, {'$set': {'pnl': util.round_to_nearest(((df_1min.iloc[-1]['close']-pos['entry_price']) * quantity), base=0.05)}})
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'exit_reason': 'Closing Time'}})
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'strategy_state': 'closed'}})
                         return
@@ -110,7 +114,8 @@ def main():
                         util.notify(message=f"Closing the position: {instrument_name}", slack_client=slack_client)
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'exit_time': datetime.now().strftime('%H:%M')}})
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'exit_price': pos['trailing_sl']}})
-                        f_test.update_one({'_id': pos['_id']}, {'$set': {'pnl': util.round_to_nearest((pos['entry_price']-pos['trailing_sl']), base=0.05)}})
+                        f_test.update_one({'_id': pos['_id']}, {'$set': {'points_captured': util.round_to_nearest((pos['entry_price']-pos['trailing_sl']), base=0.05)}})
+                        f_test.update_one({'_id': pos['_id']}, {'$set': {'pnl': util.round_to_nearest(((pos['entry_price']-pos['trailing_sl']) * quantity), base=0.05)}})
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'exit_reason': 'SL/Trailing SL'}})
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'strategy_state': 'closed'}})
                         return
@@ -118,7 +123,8 @@ def main():
                         util.notify(message=f"Closing the position: {instrument_name}", slack_client=slack_client)
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'exit_time': datetime.now().strftime('%H:%M')}})
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'exit_price': df_1min.iloc[-1]['close']}})
-                        f_test.update_one({'_id': pos['_id']}, {'$set': {'pnl': util.round_to_nearest((pos['entry_price']-df_1min.iloc[-1]['close']), base=0.05)}})
+                        f_test.update_one({'_id': pos['_id']}, {'$set': {'points_captured': util.round_to_nearest((pos['entry_price']-df_1min.iloc[-1]['close']), base=0.05)}})
+                        f_test.update_one({'_id': pos['_id']}, {'$set': {'pnl': util.round_to_nearest(((pos['entry_price']-df_1min.iloc[-1]['close']) * quantity), base=0.05)}})
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'exit_reason': 'Closing Time'}})
                         f_test.update_one({'_id': pos['_id']}, {'$set': {'strategy_state': 'closed'}})
                         return
@@ -155,6 +161,7 @@ def main():
                                         'trailing_sl': sl_price,
                                         'exit_time': "",
                                         'exit_price': None,
+                                        'points_captured': None,
                                         'pnl': None,
                                         'exit_reason': None,
                                         'prev_high': None
