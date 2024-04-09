@@ -17,8 +17,8 @@ api_token = os.environ.get('api_token')
 api_secret = os.environ.get('api_secret')
 instrument_name = os.environ.get('instrument_name')
 trading_symbol = os.environ.get('trading_symbol')
-quantity = os.environ.get('quantity')
-sl_factor = os.environ.get('sl_factor')
+quantity = float(os.environ.get('quantity'))
+sl_factor = float(os.environ.get('sl_factor'))
  
 """
 slack_channel = "niftyweekly"
