@@ -1,6 +1,9 @@
 import pandas as pd
 from lib import utils as util
+from lib import connect_definedge as edge
+from datetime import datetime
 import numpy as np
+import math
 
 def atr(DF: pd.DataFrame, period: int):
     df = DF.copy()
@@ -8,13 +11,14 @@ def atr(DF: pd.DataFrame, period: int):
     df['high-previousclose'] = abs( df['high'] - df['close'].shift(1) )
     df['low-previousclose'] = abs( df['low'] - df['close'].shift(1) )
     df['TrueRange'] = df[ ['high-low', 'high-previousclose', 'low-previousclose'] ].max(axis=1, skipna=False)
-    #df['ATR'] = df['TrueRange'].ewm(com=period, min_periods = period).mean() #Very close to TradingView
-    df['ATR'] = df['TrueRange'].rolling(window=period).mean() #Very close to Definedge
+    df['ATR'] = df['TrueRange'].ewm(com=period, min_periods = period).mean() #Very close to TradingView
+    #df['ATR'] = df['TrueRange'].rolling(window=period).mean() #Very close to Definedge
     df['ATR'] = df['ATR'].round(2)
     return df['ATR']
 
 
 def supertrend(df: pd.DataFrame, period: int, multiplier: int):
+    df['ATR'] = atr(df, period)
     df['hl2'] = (df['high'] + df['low']) / 2
     df['basic_upperband'] = df['hl2'] + (df['ATR'] * multiplier)
     df['basic_lowerband'] = df['hl2'] - (df['ATR'] * multiplier)
@@ -46,7 +50,7 @@ def supertrend(df: pd.DataFrame, period: int, multiplier: int):
                 df['value'][current] = df['final_upperband'][current]
                 df['signal'][current] = "Bearish"
     df['value'] = df['value'].round(2)
-    df.drop(['open', 'high', 'low', 'basic_upperband', 'basic_lowerband', 'hl2', 'final_upperband', 'final_lowerband', 'volume', 'in_uptrend', 'ATR'], axis='columns', inplace=True)
+    df.drop(['close', 'basic_upperband', 'basic_lowerband', 'hl2', 'final_upperband', 'final_lowerband', 'in_uptrend', 'ATR'], axis='columns', inplace=True)
     return df
 
 
@@ -60,3 +64,41 @@ def ema_channel(df: pd.DataFrame, period = 21):
     df.dropna(subset=['ema_low', 'ema_high'], inplace=True)
     df['trend'] = np.where(df['close'] <= df['ema_low'], 'Bearish', 'Bullish')    
     return df
+
+
+def renko(conn, exchange: str, trading_symbol: str, start: datetime, end: datetime, interval = 'min', brick_size = .001) -> pd.DataFrame:
+    brick_size = float(brick_size)
+    df = edge.fetch_historical_data(conn, exchange, trading_symbol, start, end, interval)
+    df['datetime'] = pd.to_datetime(df['datetime'])
+    first_brick = {
+        'timestamp': df['datetime'].iloc[0],
+        'low': df['close'].iloc[0],
+        'high': df['close'].iloc[0],
+        'color': 'green'
+    }
+    renko = [first_brick]
+    dic =  df.to_dict(orient='records')
+    for row in dic:
+        up_step = round((renko[-1]['high'] * brick_size),2)
+        down_step = round((renko[-1]['low'] * brick_size),2)
+        if row['close'] >= renko[-1]['high'] + up_step:
+            while row['close'] >= renko[-1]['high'] + (renko[-1]['high'] * brick_size):
+                new_brick=[{
+                    'timestamp': row['datetime'],
+                    'low': round(renko[-1]['high'], 2),
+                    'high': round((renko[-1]['high'] + (renko[-1]['high'] * brick_size)), 2),
+                    'color': 'green'  
+                }]
+                renko = renko + new_brick
+        if row['close'] <= renko[-1]['low'] - down_step:
+            while row['close'] <= renko[-1]['low'] - (renko[-1]['low'] * brick_size):
+                new_brick=[{
+                    'timestamp': row['datetime'],
+                    'low': round((renko[-1]['low'] - (renko[-1]['low'] * brick_size)), 2),
+                    'high': round(renko[-1]['low'], 2),
+                    'color': 'red'  
+                }]
+                renko = renko + new_brick
+    df = pd.DataFrame(renko)
+    df['close'] = np.where(df['color'] == 'red', df['low'], df['high'])
+    return df 
