@@ -78,7 +78,7 @@ def main():
             
             if f_test.count_documents(query) == 1:
                 if iteration % 18 == 0:
-                    util.notify(message="Active Position Found!", slack_client=slack_client)
+                    util.notify(message=f"Active Position Found: {instrument_name}", slack_client=slack_client)
                     util.notify(message=f"current time: {current_time}", slack_client=slack_client)
                 pos = f_test.find_one(query)
                 if pos['trend'] == "Bullish":
