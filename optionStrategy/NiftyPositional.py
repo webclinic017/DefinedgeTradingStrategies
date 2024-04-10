@@ -321,8 +321,8 @@ def close_active_positions(api_token, api_secret):
 def main():
     notify("Nifty Positional bot kicked off")
     print("Nifty Positional bot kicked off")
-    util.notify(f"Supertrend Direction: {get_supertrend_direction()}")
-    util.notify(f"Supertrend Value: {get_supertrend_value()}")
+    util.notify(f"Supertrend Direction: {get_supertrend_direction()}", slack_client=slack_client)
+    util.notify(f"Supertrend Value: {get_supertrend_value()}", slack_client=slack_client)
     iteration = 0
     while True:
         if iteration % 18 == 0:
