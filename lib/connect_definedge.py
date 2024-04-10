@@ -5,8 +5,9 @@ from datetime import datetime
 import requests
 import zipfile
 import io
+from retry import retry
 
-
+@retry(tries=5, delay=5, backoff=2)
 def login_to_integrate(api_token: str, api_secret: str) -> ConnectToIntegrate:
     """
     NZKUOQTJKBAVK3KNPBYUMRDTOBWUU2KV
@@ -17,6 +18,7 @@ def login_to_integrate(api_token: str, api_secret: str) -> ConnectToIntegrate:
     conn.login(api_token=api_token, api_secret=api_secret, totp=totp)
     return conn
 
+@retry(tries=5, delay=5, backoff=2)
 def fetch_historical_data(conn: ConnectToIntegrate, exchange: str, trading_symbol: str, start: datetime, end: datetime, interval = 'min') -> pd.DataFrame:
     """
     Fetch historical data and return as a pandas DataFrame.
@@ -37,7 +39,7 @@ def fetch_historical_data(conn: ConnectToIntegrate, exchange: str, trading_symbo
     df = pd.DataFrame(list(history))  # Ensure conversion to list if generator
     return df
 
-
+@retry(tries=5, delay=5, backoff=2)
 def get_option_price(conn: ConnectToIntegrate, exchange: str , trading_symbol: str, start: datetime, end: datetime, interval = 'min'):
     if interval == 'day':
         tf = conn.TIMEFRAME_TYPE_DAY
@@ -55,7 +57,7 @@ def get_option_price(conn: ConnectToIntegrate, exchange: str , trading_symbol: s
     df = pd.DataFrame(list(history))  # Ensure conversion to list if generator
     return df['close'].iloc[-1]  
 
-
+@retry(tries=5, delay=5, backoff=2)
 def get_index_future(url='https://app.definedgesecurities.com/public/allmaster.zip', instrument_name = "NIFTY"):
     current_date = datetime.now()
     column_names = ['SEGMENT', 'TOKEN', 'SYMBOL', 'TRADINGSYM', 'INSTRUMENT TYPE', 'EXPIRY', 'TICKSIZE', 'LOTSIZE', 'OPTIONTYPE', 'STRIKE', 'PRICEPREC', 'MULTIPLIER', 'ISIN', 'PRICEMULT', 'UnKnown']

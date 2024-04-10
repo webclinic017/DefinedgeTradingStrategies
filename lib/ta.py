@@ -66,8 +66,9 @@ def ema_channel(df: pd.DataFrame, period = 21):
     return df
 
 
-def renko(conn, exchange: str, trading_symbol: str, start: datetime, end: datetime, interval = 'min', brick_size = .001) -> pd.DataFrame:
-    brick_size = float(brick_size)
+def renko(conn, exchange: str, trading_symbol: str, start: datetime, end: datetime, interval = 'min', brick_size = .1) -> pd.DataFrame:
+
+    brick_size = float(brick_size)/100
     df = edge.fetch_historical_data(conn, exchange, trading_symbol, start, end, interval)
     df['datetime'] = pd.to_datetime(df['datetime'])
     first_brick = {
