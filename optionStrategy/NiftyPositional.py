@@ -3,6 +3,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from lib import connect_definedge as edge
+from lib import utils as util
 import requests
 from logging import INFO, basicConfig, getLogger
 import time
@@ -320,9 +321,13 @@ def close_active_positions(api_token, api_secret):
 def main():
     notify("Nifty Positional bot kicked off")
     print("Nifty Positional bot kicked off")
-    notify(f"Supertrend Direction: {get_supertrend_direction()}")
-    notify(f"Supertrend Value: {get_supertrend_value()}")
+    util.notify(f"Supertrend Direction: {get_supertrend_direction()}")
+    util.notify(f"Supertrend Value: {get_supertrend_value()}")
+    iteration = 0
     while True:
+        if iteration % 18 == 0:
+            util.notify(message=f"Nifty Weekly option Selling bot is Alive!", slack_client=slack_client)
+            util.notify(message=f"current time from NiftyWeeklyOptionSelling: {current_time}", slack_client=slack_client)
         current_time = datetime.datetime.now().time()
         print(f"current time: {current_time}")
         if current_time > trade_start_time:
@@ -360,5 +365,6 @@ def main():
             notify("Closing Bell, Bot will exit now")
             return   
         time.sleep(10)
+        iteration = iteration + 1
 if __name__ == "__main__":
     main()
