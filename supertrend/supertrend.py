@@ -53,21 +53,18 @@ def main():
             end = datetime.today()
 
             conn = edge.login_to_integrate(api_token, api_secret)
-            df = edge.fetch_historical_data(conn, exchange, trading_symbol, start, end)
-            df_15min = util.resample_ohlc_data(df, frequency)
+            df = ta.renko(conn, exchange, trading_symbol, start, end)
             
-            logger.info("\n***** 15-minute OHLC Data *****\n")
-            df_15min['ATR'] = ta.atr(df_15min, 10)
-            df_15min= ta.supertrend(df_15min, 10, 4)
-            print(df_15min.iloc[-2])
+            logger.info("\n***** 1 min Renko Data *****\n")
+            df= ta.supertrend(df, 40, 10)
+            print(df.iloc[-1])
 
             if supertrend_collection.count_documents({"_id": "supertrend"}) == 0:
-                st = {"_id": "supertrend", "datetime": df_15min.iloc[-2]['datetime'],
-                            "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "running_value": df_15min.iloc[-1]['value'], "signal": df_15min.iloc[-2]['signal']}
+                st = {"_id": "supertrend", "datetime": df.iloc[-1]['datetime'], "value": df.iloc[-1]['ST'], "signal": df.iloc[-1]['signal']}
                 supertrend_collection.insert_one(st)
             else:
-                supertrend_collection.update_one({'_id': "supertrend"}, {'$set': {"datetime": df_15min.iloc[-2]['datetime'],
-                            "close": df_15min.iloc[-2]['close'], "value": df_15min.iloc[-2]['value'], "running_value": df_15min.iloc[-1]['value'], "signal": df_15min.iloc[-2]['signal']}})
+                supertrend_collection.update_one({'_id': "supertrend"}, {'$set': {"datetime": df.iloc[-1]['datetime'],
+                            "value": df.iloc[-1]['ST'], "signal": df.iloc[-1]['signal']}})
         
         print("repeating loop for Supertrend")
         if current_time > trade_end_time:

@@ -64,7 +64,7 @@ def main():
     start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
     df = ta.renko(conn, 'NSE', 'Nifty 50', start, datetime.today(), 'min')
     renko_st = ta.supertrend(df, 40, 10)
-    print(renko_st.iloc[-200:-1])
+    print(renko_st.iloc[-100:-1])
 
 
 

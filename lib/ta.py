@@ -24,7 +24,7 @@ def supertrend(df: pd.DataFrame, period: int, multiplier: int):
     df['basic_lowerband'] = df['hl2'] - (df['ATR'] * multiplier)
     df['final_upperband'] = 0
     df['final_lowerband'] = 0
-    df['value'] = 0
+    df['ST'] = 0
     df['in_uptrend'] = True
     df['signal'] = "Bullish"
     for i in range(period, len(df)):
@@ -36,21 +36,21 @@ def supertrend(df: pd.DataFrame, period: int, multiplier: int):
         if df['close'][current] > df['final_upperband'][previous]:
             df['in_uptrend'][current] = True
             df['signal'][current] = "Bullish"
-            df['value'][current] = df['final_lowerband'][current]
+            df['ST'][current] = df['final_lowerband'][current]
         elif df['close'][current] < df['final_lowerband'][previous]:
             df['in_uptrend'][current] = False
             df['signal'][current] = "Bearish"
-            df['value'][current] = df['final_upperband'][current]
+            df['ST'][current] = df['final_upperband'][current]
         else:
             df['in_uptrend'][current] = df['in_uptrend'][previous]
             if df['in_uptrend'][current]:
-                df['value'][current] = df['final_lowerband'][current]
+                df['ST'][current] = df['final_lowerband'][current]
                 df['signal'][current] = "Bullish"
             else:
-                df['value'][current] = df['final_upperband'][current]
+                df['ST'][current] = df['final_upperband'][current]
                 df['signal'][current] = "Bearish"
-    df['value'] = df['value'].round(2)
-    df.drop(['close', 'basic_upperband', 'basic_lowerband', 'hl2', 'final_upperband', 'final_lowerband', 'in_uptrend', 'ATR'], axis='columns', inplace=True)
+    df['ST'] = df['ST'].round(2)
+    df.drop(['basic_upperband', 'basic_lowerband', 'hl2', 'final_upperband', 'final_lowerband', 'in_uptrend', 'ATR'], axis='columns', inplace=True)
     return df
 
 
@@ -71,7 +71,7 @@ def renko(conn, exchange: str, trading_symbol: str, start: datetime, end: dateti
     df = edge.fetch_historical_data(conn, exchange, trading_symbol, start, end, interval)
     df['datetime'] = pd.to_datetime(df['datetime'])
     first_brick = {
-        'timestamp': df['datetime'].iloc[0],
+        'datetime': df['datetime'].iloc[0],
         'low': df['close'].iloc[0],
         'high': df['close'].iloc[0],
         'color': 'green'
@@ -84,7 +84,7 @@ def renko(conn, exchange: str, trading_symbol: str, start: datetime, end: dateti
         if row['close'] >= renko[-1]['high'] + up_step:
             while row['close'] >= renko[-1]['high'] + (renko[-1]['high'] * brick_size):
                 new_brick=[{
-                    'timestamp': row['datetime'],
+                    'datetime': row['datetime'],
                     'low': round(renko[-1]['high'], 2),
                     'high': round((renko[-1]['high'] + (renko[-1]['high'] * brick_size)), 2),
                     'color': 'green'  
@@ -93,7 +93,7 @@ def renko(conn, exchange: str, trading_symbol: str, start: datetime, end: dateti
         if row['close'] <= renko[-1]['low'] - down_step:
             while row['close'] <= renko[-1]['low'] - (renko[-1]['low'] * brick_size):
                 new_brick=[{
-                    'timestamp': row['datetime'],
+                    'datetime': row['datetime'],
                     'low': round((renko[-1]['low'] - (renko[-1]['low'] * brick_size)), 2),
                     'high': round(renko[-1]['low'], 2),
                     'color': 'red'  
