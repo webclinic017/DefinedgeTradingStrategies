@@ -1,10 +1,9 @@
 from pymongo import MongoClient
 import os
-import json
 import sys
-import pyotp
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+from lib import connect_definedge as edge
 import requests
-from integrate import ConnectToIntegrate, IntegrateData, IntegrateOrders
 from logging import INFO, basicConfig, getLogger
 import time
 import zipfile
@@ -25,6 +24,7 @@ user_name = os.environ.get('user_name')
 quantity = os.environ.get('quantity')
 trade_start_time = parser.parse("9:29:00").time()
 trade_end_time = parser.parse(str(os.environ.get('trade_end_time'))).time()
+slack_client = WebClient(token=os.environ.get('slack_client'))
 """
 
 slack_channel = "niftyweekly"
@@ -32,7 +32,8 @@ CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongo
 user_name = "sugam"
 quantity = '50'
 trade_start_time = parser.parse("9:20:00").time()
-trade_end_time = parser.parse("15:25:00").time()
+trade_end_time = parser.parse("15:28:00").time()
+slack_client = WebClient(token=os.environ.get('slack_client'))
 
 api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
 api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
@@ -41,14 +42,10 @@ mongo_client = MongoClient(CONNECTION_STRING)
 
 strategies_collection_name = "nifty_weekly" + "_" + user_name
 orders_collection_name = "orders_nifty_weekly" + "_" + user_name
-trade_diary_collection_name = "nifty_weekly_trade_diary" + "_" + user_name
 
 # trades collection
 strategies = mongo_client['Bots'][strategies_collection_name]
 orders = mongo_client['Bots'][orders_collection_name]  # orders collection
-# trade_diary collection
-trade_diary = mongo_client['Bots'][trade_diary_collection_name]
-slack_client = WebClient(token=os.environ.get('slack_client'))
 
 
 basicConfig(level=INFO)
@@ -65,38 +62,6 @@ def notify(message):
         icon_emoji=":chart_with_upwards_trend:"
     )
 
-
-@retry(tries=5, delay=5, backoff=2)
-def login_to_integrate(api_token: str, api_secret: str) -> ConnectToIntegrate:
-    """
-    NZKUOQTJKBAVK3KNPBYUMRDTOBWUU2KV
-    Login to Integrate and return the connection object.
-    """
-    conn = ConnectToIntegrate()
-    totp = pyotp.TOTP("NZKUOQTJKBAVK3KNPBYUMRDTOBWUU2KV").now()
-    conn.login(api_token=api_token, api_secret=api_secret, totp=totp)
-    print("Connected successfully with Definedge API's")
-    notify("Connected successfully with Definedge API's")
-    return conn
-
-
-@retry(tries=5, delay=5, backoff=2)
-def fetch_historical_data(conn: ConnectToIntegrate, exchange: str, trading_symbol: str, start: datetime, end: datetime) -> pd.DataFrame:
-    """
-    Fetch historical data and return as a pandas DataFrame.
-    """
-    ic = IntegrateData(conn)
-    history = ic.historical_data(
-        exchange=exchange,
-        trading_symbol=trading_symbol,
-        timeframe=conn.TIMEFRAME_TYPE_MIN,  # Use the specific timeframe value
-        start=start,
-        end=end,
-    )
-    df = pd.DataFrame(list(history))  # Ensure conversion to list if generator
-    return df
-
-
 @retry(tries=5, delay=5, backoff=2)
 def get_supertrend_direction():
     supertrend_collection = mongo_client['Bots']["supertrend"]
@@ -112,26 +77,19 @@ def get_supertrend_value():
     print(f"Super Trend Value: {supertrend['value']}")
     return supertrend["value"]
 
-@retry(tries=5, delay=5, backoff=2)
-def get_supertrend_running_value():
-    supertrend_collection = mongo_client['Bots']["supertrend"]
-    supertrend = supertrend_collection.find_one({"_id": "supertrend"})
-    print(f"Super Trend Running Value: {supertrend['running_value']}")
-    return supertrend["running_value"]
-
 
 @retry(tries=5, delay=5, backoff=2)
-def get_supertrend_close():
+def get_nifty_close():
     supertrend_collection = mongo_client['Bots']["supertrend"]
     supertrend = supertrend_collection.find_one({"_id": "supertrend"})
-    print(f"Super Trend close: {supertrend['close']}")
-    return supertrend["close"]
+    print(f"Nifty Close: {supertrend['close']}")
+    return supertrend['close']
 
 
 @retry(tries=5, delay=5, backoff=2)
 def place_buy_order(api_token, api_secret, symbol, qty):
-    conn = login_to_integrate(api_token, api_secret)
-    io = IntegrateOrders(conn)
+    conn = edge.login_to_integrate(api_token, api_secret)
+    io = edge.IntegrateOrders(conn)
     order = io.place_order(
         exchange=conn.EXCHANGE_TYPE_NFO,
         order_type=conn.ORDER_TYPE_BUY,
@@ -157,8 +115,8 @@ def place_buy_order(api_token, api_secret, symbol, qty):
 
 @retry(tries=5, delay=5, backoff=2)
 def place_sell_order(api_token, api_secret, symbol, qty):
-    conn = login_to_integrate(api_token, api_secret)
-    io = IntegrateOrders(conn)
+    conn = edge.login_to_integrate(api_token, api_secret)
+    io = edge.IntegrateOrders(conn)
     order = io.place_order(
         exchange=conn.EXCHANGE_TYPE_NFO,
         order_type=conn.ORDER_TYPE_SELL,
@@ -183,8 +141,8 @@ def place_sell_order(api_token, api_secret, symbol, qty):
 
 
 @retry(tries=5, delay=5, backoff=2)
-def get_order_by_order_id(conn: ConnectToIntegrate, order_id):
-    io = IntegrateOrders(conn)
+def get_order_by_order_id(conn: edge.ConnectToIntegrate, order_id):
+    io = edge.IntegrateOrders(conn)
     print(f"Getting order by order ID: {order_id}")
     order = io.order(order_id)
     print(order)
@@ -192,22 +150,8 @@ def get_order_by_order_id(conn: ConnectToIntegrate, order_id):
 
 
 @retry(tries=5, delay=5, backoff=2)
-def get_nifty_close(conn: ConnectToIntegrate):
-    exchange = "NSE"
-    trading_symbol = "Nifty 50"
-    yesterday = datetime.datetime.now() - timedelta(days=1)
-    start = yesterday.replace(hour=9, minute=15, second=0, microsecond=0)
-    end = datetime.datetime.today()
-    df = fetch_historical_data(conn, exchange, trading_symbol, start, end)
-    print(f"nifty close: {df.iloc[-1]['close']}")
-    notify(f"nifty close: {df.iloc[-1]['close']}")
-    return df.iloc[-1]['close']
-
-
-
-@retry(tries=5, delay=5, backoff=2)
-def get_nifty_atm(conn: ConnectToIntegrate):
-    return round(50 * round(float(get_supertrend_running_value())/50), 2)
+def get_nifty_atm(conn: edge.ConnectToIntegrate):
+    return round(50 * round(float(get_supertrend_value())/50), 2)
 
 
 
@@ -254,26 +198,29 @@ def get_option_symbol(strike=19950, option_type = "PE" ):
 
 @retry(tries=5, delay=5, backoff=2)
 def create_bull_put_spread(api_token, api_secret):
-    conn = login_to_integrate(api_token, api_secret)
+    conn = edge.login_to_integrate(api_token, api_secret)
     option_type = "PE"
     atm = get_nifty_atm(conn)
-    nifty_close = get_supertrend_close()
-    sell_strike = atm
-    buy_strike = sell_strike - 350
+    nifty_close = get_nifty_close()
+    sell_strike = atm + 50
+    buy_strike = sell_strike - 300
     sell_strike_symbol, expiry = get_option_symbol(sell_strike, option_type)
     buy_strike_symbol, expiry = get_option_symbol(buy_strike, option_type)
     print(expiry)
     expiry = str(expiry)
     expiry = parser.parse(expiry).date()
     print(expiry)
-    buy_order = place_buy_order(api_token, api_secret, buy_strike_symbol, quantity)
-    if buy_order['order_status'] == "COMPLETE":
-        sell_order = place_sell_order(api_token, api_secret, sell_strike_symbol, quantity)
-    short_option_cost = sell_order['average_traded_price']
-    long_option_cost = buy_order['average_traded_price']
+    # buy_order = place_buy_order(api_token, api_secret, buy_strike_symbol, quantity)
+    # if buy_order['order_status'] == "COMPLETE":
+    #     sell_order = place_sell_order(api_token, api_secret, sell_strike_symbol, quantity)
+    # short_option_cost = sell_order['average_traded_price']
+    # long_option_cost = buy_order['average_traded_price']
+    days_ago = datetime.datetime.now() - timedelta(days=7)
+    start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
+    short_option_cost = edge.get_option_price(conn, 'NFO', sell_strike_symbol, start, datetime.datetime.today(), 'min')
+    long_option_cost = edge.get_option_price(conn, 'NFO', buy_strike_symbol, start, datetime.datetime.today(), 'min')
     notify("created bull put spread!")
     record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, "Bullish", nifty_close, expiry, short_option_cost, long_option_cost)
-    return buy_order['order_id'], sell_order['order_id']
 
 
 
@@ -305,26 +252,29 @@ def record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, trend, nifty_
 
 @retry(tries=5, delay=5, backoff=2)
 def create_bear_call_spread(api_token, api_secret):
-    conn = login_to_integrate(api_token, api_secret)
+    conn = edge.login_to_integrate(api_token, api_secret)
     option_type = "CE"
     atm = get_nifty_atm(conn)
-    nifty_close = get_supertrend_close()
-    sell_strike = atm
-    buy_strike = sell_strike + 350
+    nifty_close = get_nifty_close()
+    sell_strike = atm - 50
+    buy_strike = sell_strike + 300
     sell_strike_symbol, expiry = get_option_symbol(sell_strike, option_type)
     buy_strike_symbol, expiry = get_option_symbol(buy_strike, option_type)
     print(expiry)
     expiry = str(expiry)
     expiry = parser.parse(expiry).date()
     print(expiry)
-    buy_order = place_buy_order(api_token, api_secret, buy_strike_symbol, quantity)
-    if buy_order['order_status'] == "COMPLETE":
-        sell_order = place_sell_order(api_token, api_secret, sell_strike_symbol, quantity)
-    short_option_cost = sell_order['average_traded_price']
-    long_option_cost = buy_order['average_traded_price']
+    # buy_order = place_buy_order(api_token, api_secret, buy_strike_symbol, quantity)
+    # if buy_order['order_status'] == "COMPLETE":
+    #     sell_order = place_sell_order(api_token, api_secret, sell_strike_symbol, quantity)
+    # short_option_cost = sell_order['average_traded_price']
+    # long_option_cost = buy_order['average_traded_price']
+    days_ago = datetime.datetime.now() - timedelta(days=7)
+    start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
+    short_option_cost = edge.get_option_price(conn, 'NFO', sell_strike_symbol, start, datetime.datetime.today(), 'min')
+    long_option_cost = edge.get_option_price(conn, 'NFO', buy_strike_symbol, start, datetime.datetime.today(), 'min')
     notify("created bear call spread!")
     record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, "Bearish", nifty_close, expiry, short_option_cost, long_option_cost)
-    return buy_order['order_id'], sell_order['order_id']
 
 def calculate_pnl(quantity, long_entry, long_exit, short_entry, short_exit):
     pnl = float(quantity) * ((float(short_entry) - float(short_exit)) + (float(long_exit) - float(long_entry)))
@@ -337,18 +287,33 @@ def close_active_positions(api_token, api_secret):
     notify("Closing active positions")
     active_strategies = strategies.find({'strategy_state': 'active'})
     for strategy in active_strategies:
-        buy_order = place_buy_order(api_token, api_secret, strategy['short_option_symbol'], strategy['quantity'])
+        #buy_order = place_buy_order(api_token, api_secret, strategy['short_option_symbol'], strategy['quantity'])
+        #notify("Short option leg closed")
+        # if buy_order['order_status'] == "COMPLETE":
+        #     sell_order = place_sell_order(api_token, api_secret, strategy['long_option_symbol'], strategy['quantity'])
+        #     notify("Long option leg closed")
+        #     strategies.update_one({'_id': strategy['_id']}, {'$set': {'strategy_state': 'closed'}})
+        #     strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_date': str(datetime.datetime.now().date())}})
+        #     strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_time': datetime.datetime.now().strftime('%H:%M')}})
+        #     strategies.update_one({'_id': strategy['_id']}, {'$set': {'short_exit_price': buy_order['average_traded_price']}})
+        #     strategies.update_one({'_id': strategy['_id']}, {'$set': {'long_exit_price': sell_order['average_traded_price']}})
+        #     pnl = calculate_pnl(strategy['quantity'], strategy['long_option_cost'], sell_order['average_traded_price'], strategy['short_option_cost'],buy_order['average_traded_price'])
+        #     strategies.update_one({'_id': strategy['_id']}, {'$set': {'pnl': pnl}})
+        #notify("Long option leg closed")
         notify("Short option leg closed")
-        if buy_order['order_status'] == "COMPLETE":
-            sell_order = place_sell_order(api_token, api_secret, strategy['long_option_symbol'], strategy['quantity'])
-            notify("Long option leg closed")
-            strategies.update_one({'_id': strategy['_id']}, {'$set': {'strategy_state': 'closed'}})
-            strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_date': str(datetime.datetime.now().date())}})
-            strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_time': datetime.datetime.now().strftime('%H:%M')}})
-            strategies.update_one({'_id': strategy['_id']}, {'$set': {'short_exit_price': buy_order['average_traded_price']}})
-            strategies.update_one({'_id': strategy['_id']}, {'$set': {'long_exit_price': sell_order['average_traded_price']}})
-            pnl = calculate_pnl(strategy['quantity'], strategy['long_option_cost'], sell_order['average_traded_price'], strategy['short_option_cost'],buy_order['average_traded_price'])
-            strategies.update_one({'_id': strategy['_id']}, {'$set': {'pnl': pnl}})
+        notify("Long option leg closed")
+        strategies.update_one({'_id': strategy['_id']}, {'$set': {'strategy_state': 'closed'}})
+        strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_date': str(datetime.datetime.now().date())}})
+        strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_time': datetime.datetime.now().strftime('%H:%M')}})
+        days_ago = datetime.now() - timedelta(days=7)
+        start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
+        conn = edge.login_to_integrate(api_token, api_secret)
+        short_exit_price = edge.get_option_price(conn, 'NFO', strategy['short_option_symbol'], start, datetime.datetime.today(), 'min')
+        long_exit_price = edge.get_option_price(conn, 'NFO', strategy['long_option_symbol'], start, datetime.datetime.today(), 'min')
+        strategies.update_one({'_id': strategy['_id']}, {'$set': {'short_exit_price': short_exit_price}})
+        strategies.update_one({'_id': strategy['_id']}, {'$set': {'long_exit_price': long_exit_price}})
+        pnl = calculate_pnl(strategy['quantity'], strategy['long_option_cost'], long_exit_price, strategy['short_option_cost'],short_exit_price)
+        strategies.update_one({'_id': strategy['_id']}, {'$set': {'pnl': pnl}})
     return
 
 
@@ -371,13 +336,13 @@ def main():
                         close_active_positions(api_token, api_secret)
                         break
 
-                    if strategy['trend'] == 'Bullish' and get_supertrend_value() > (strategy['nifty_close'] + 50):
-                        notify("Nifty moved 200 points, shifting the strikes")
+                    if strategy['trend'] == 'Bullish' and get_supertrend_value() > (strategy['nifty_close']):
+                        notify("Supertrend crossed inception point, shift the strikes!")
                         close_active_positions(api_token, api_secret)
                         break
 
-                    if strategy['trend'] == 'Bearish' and get_supertrend_value() < (strategy['nifty_close'] - 50):
-                        notify("Nifty moved 200 points, shifting the strikes")
+                    if strategy['trend'] == 'Bearish' and get_supertrend_value() < (strategy['nifty_close']):
+                        notify("Supertrend crossed inception point, shift the strikes!")
                         close_active_positions(api_token, api_secret)
                         break
 

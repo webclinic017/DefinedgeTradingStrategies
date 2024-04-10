@@ -60,11 +60,13 @@ def main():
     api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
     api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
     conn = login_to_integrate(api_token, api_secret)
-    days_ago = datetime.now() - timedelta(days=180)
+    days_ago = datetime.now() - timedelta(days=7)
     start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
-    df = ta.renko(conn, 'NSE', 'Nifty 50', start, datetime.today(), 'min')
+    df = ta.renko(conn, 'NFO', 'NIFTY18APR24P22600', start, datetime.today(), 'min', .01)
+    ohlc = edge.fetch_historical_data(conn, 'NFO', 'NIFTY18APR24P22600', start, datetime.today(), 'min')
     renko_st = ta.supertrend(df, 40, 10)
     print(renko_st.iloc[-100:-1])
+    print(ohlc.iloc[-100:-1])
 
 
 

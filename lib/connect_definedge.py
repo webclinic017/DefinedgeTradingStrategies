@@ -38,6 +38,24 @@ def fetch_historical_data(conn: ConnectToIntegrate, exchange: str, trading_symbo
     return df
 
 
+def get_option_price(conn: ConnectToIntegrate, exchange: str , trading_symbol: str, start: datetime, end: datetime, interval = 'min'):
+    if interval == 'day':
+        tf = conn.TIMEFRAME_TYPE_DAY
+    elif interval == 'min':
+        tf = conn.TIMEFRAME_TYPE_MIN
+
+    ic = IntegrateData(conn)
+    history = ic.historical_data(
+        exchange=exchange,
+        trading_symbol=trading_symbol,
+        timeframe=tf,  # Use the specific timeframe value
+        start=start,
+        end=end,
+    )
+    df = pd.DataFrame(list(history))  # Ensure conversion to list if generator
+    return df['close'].iloc[-1]  
+
+
 def get_index_future(url='https://app.definedgesecurities.com/public/allmaster.zip', instrument_name = "NIFTY"):
     current_date = datetime.now()
     column_names = ['SEGMENT', 'TOKEN', 'SYMBOL', 'TRADINGSYM', 'INSTRUMENT TYPE', 'EXPIRY', 'TICKSIZE', 'LOTSIZE', 'OPTIONTYPE', 'STRIKE', 'PRICEPREC', 'MULTIPLIER', 'ISIN', 'PRICEMULT', 'UnKnown']
