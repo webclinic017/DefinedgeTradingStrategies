@@ -20,17 +20,17 @@ trading_symbol = os.environ.get('trading_symbol')
 quantity = float(os.environ.get('quantity'))
 sl_factor = float(os.environ.get('sl_factor'))
  
-"""
-slack_channel = "niftyweekly"
-slack_token =""
-CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongodb.net/?retryWrites=true&w=majority" #Mongo Connection
-api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
-api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
-instrument_name = "NIFTY"
-trading_symbol = "Nifty 50"
-quantity = 50
-sl_factor = .001
-"""
+
+# slack_channel = "niftyweekly"
+# slack_token =""
+# CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongodb.net/?retryWrites=true&w=majority" #Mongo Connection
+# api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
+# api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
+# instrument_name = "NIFTY"
+# trading_symbol = "Nifty 50"
+# quantity = 50
+# sl_factor = .001
+
 
 frequency = '15T'
 exchange = "NSE"
@@ -66,6 +66,9 @@ def main():
         print(f"current time: {current_time}")
         if current_time > trade_start_time:
             df_15min = edge.fetch_historical_data(conn, conn.EXCHANGE_TYPE_NFO, future_symbol, today, datetime.today(), 'min')
+            if df_15min.empty:
+                util.notify(message='Check if it is a holiday today, the broker did not return the intraday data', slack_client = slack_client)
+                return
             df_15min = util.resample_ohlc_data(df_15min, frequency)
             print("*** 15 min OHLC data ***")
             print(df_15min.iloc[0])
