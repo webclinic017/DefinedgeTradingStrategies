@@ -326,7 +326,7 @@ def main():
     iteration = 0
     while True:
         current_time = datetime.datetime.now().time()
-        if iteration % 18 == 0:
+        if iteration % 35 == 0:
             util.notify(message=f"Nifty Weekly option Selling bot is Alive!", slack_client=slack_client)
             util.notify(message=f"current time from NiftyWeeklyOptionSelling: {current_time}", slack_client=slack_client)
         print(f"current time: {current_time}")
