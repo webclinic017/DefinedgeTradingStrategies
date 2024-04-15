@@ -24,7 +24,7 @@ trade_end_time = parser.parse(str(os.environ.get('trade_end_time'))).time()
 slack_url = "https://hooks.slack.com/services/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"
 slack_channel = "straddlebot"
 CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongodb.net/?retryWrites=true&w=majority" #Mongo Connection
-trade_end_time = parser.parse("15:25:00").time()
+trade_end_time = parser.parse("15:29:00").time()
 trade_start_time = parser.parse("09:16:00").time()
 
 mongo_client = MongoClient(CONNECTION_STRING)
@@ -46,7 +46,7 @@ def main():
             trading_symbol = "Nifty 50"
             frequency = '15T'
             # Calculate 60 days ago from today
-            ten_days_ago = datetime.now() - timedelta(days=60)
+            ten_days_ago = datetime.now() - timedelta(days=180)
 
             # Set the time to 9:15 AM on that date
             start = ten_days_ago.replace(hour=9, minute=15, second=0, microsecond=0)

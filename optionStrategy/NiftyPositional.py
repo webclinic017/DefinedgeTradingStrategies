@@ -32,7 +32,7 @@ slack_channel = "niftyweekly"
 CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongodb.net/?retryWrites=true&w=majority"  # Mongo Connection
 user_name = "sugam"
 quantity = '50'
-trade_start_time = parser.parse("9:20:00").time()
+trade_start_time = parser.parse("9:17:00").time()
 trade_end_time = parser.parse("15:28:00").time()
 slack_client = WebClient(token=os.environ.get('slack_client'))
 
@@ -306,7 +306,7 @@ def close_active_positions(api_token, api_secret):
         strategies.update_one({'_id': strategy['_id']}, {'$set': {'strategy_state': 'closed'}})
         strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_date': str(datetime.datetime.now().date())}})
         strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_time': datetime.datetime.now().strftime('%H:%M')}})
-        days_ago = datetime.now() - timedelta(days=7)
+        days_ago = datetime.datetime.now() - timedelta(days=7)
         start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
         conn = edge.login_to_integrate(api_token, api_secret)
         short_exit_price = edge.get_option_price(conn, 'NFO', strategy['short_option_symbol'], start, datetime.datetime.today(), 'min')
