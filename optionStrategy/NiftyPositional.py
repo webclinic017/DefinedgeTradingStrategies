@@ -177,7 +177,7 @@ def get_option_symbol(strike=19950, option_type = "PE" ):
     # Calculate the start and end dates of the current week
     start_of_week = current_date - timedelta(days=current_date.weekday())
     end_of_week = start_of_week + timedelta(days=12)
-    df= df[(df['EXPIRY'] >= start_of_week) & (df['EXPIRY'] > (current_date + timedelta(days=1))) & (df['EXPIRY'] <= end_of_week)]
+    df= df[(df['EXPIRY'] >= start_of_week) & (df['EXPIRY'] > (current_date + timedelta(days=2))) & (df['EXPIRY'] <= end_of_week)]
     df = df.head(1)
     print("Getting options Symbol...")
     print(f"Symbol: {df['TRADINGSYM'].values[0]} , Expiry: {df['EXPIRY'].values[0]}")
@@ -192,7 +192,7 @@ def create_bull_put_spread(api_token, api_secret):
     option_type = "PE"
     atm = get_nifty_atm(conn)
     nifty_close = get_nifty_close()
-    sell_strike = atm + 50
+    sell_strike = atm + 100
     buy_strike = sell_strike - 300
     sell_strike_symbol, expiry = get_option_symbol(sell_strike, option_type)
     buy_strike_symbol, expiry = get_option_symbol(buy_strike, option_type)
@@ -246,7 +246,7 @@ def create_bear_call_spread(api_token, api_secret):
     option_type = "CE"
     atm = get_nifty_atm(conn)
     nifty_close = get_nifty_close()
-    sell_strike = atm - 50
+    sell_strike = atm - 100
     buy_strike = sell_strike + 300
     sell_strike_symbol, expiry = get_option_symbol(sell_strike, option_type)
     buy_strike_symbol, expiry = get_option_symbol(buy_strike, option_type)
