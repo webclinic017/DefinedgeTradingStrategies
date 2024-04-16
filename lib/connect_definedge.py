@@ -40,7 +40,8 @@ def fetch_historical_data(conn: ConnectToIntegrate, exchange: str, trading_symbo
     return df
 
 @retry(tries=5, delay=5, backoff=2)
-def get_option_price(conn: ConnectToIntegrate, exchange: str , trading_symbol: str, start: datetime, end: datetime, interval = 'min'):
+def get_option_price(api_token: str, api_secret: str, exchange: str , trading_symbol: str, start: datetime, end: datetime, interval = 'min'):
+    conn = login_to_integrate(api_token, api_secret)
     if interval == 'day':
         tf = conn.TIMEFRAME_TYPE_DAY
     elif interval == 'min':

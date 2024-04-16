@@ -53,17 +53,6 @@ basicConfig(level=INFO)
 logger = getLogger()
 
 @retry(tries=5, delay=5, backoff=2)
-def notify(message):
-    channel = "#" + slack_channel
-    print(message)
-    slack_client.chat_postMessage(
-        channel=channel, 
-        text=message, 
-        username="TradeBot",
-        icon_emoji=":chart_with_upwards_trend:"
-    )
-
-@retry(tries=5, delay=5, backoff=2)
 def get_supertrend_direction():
     supertrend_collection = mongo_client['Bots']["supertrend"]
     supertrend = supertrend_collection.find_one({"_id": "supertrend"})
@@ -109,7 +98,7 @@ def place_buy_order(api_token, api_secret, symbol, qty):
         raise Exception("Error in placing order - " +
                     str(order['message']))
     print(f"Order placed: {order}")
-    notify(f"Order placed: {order}")
+    util.notify(f"Order placed: {order}")
     orders.insert_one(order)
     return order
 
@@ -136,7 +125,7 @@ def place_sell_order(api_token, api_secret, symbol, qty):
         raise Exception("Error in placing order - " +
                     str(order['message']))
     print(f"Order placed: {order}")
-    notify(f"Order placed: {order}")
+    util.notify(f"Order placed: {order}")
     orders.insert_one(order)
     return order
 
@@ -220,7 +209,7 @@ def create_bull_put_spread(api_token, api_secret):
     start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
     short_option_cost = edge.get_option_price(conn, 'NFO', sell_strike_symbol, start, datetime.datetime.today(), 'min')
     long_option_cost = edge.get_option_price(conn, 'NFO', buy_strike_symbol, start, datetime.datetime.today(), 'min')
-    notify("created bull put spread!")
+    util.notify("created bull put spread!")
     record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, "Bullish", nifty_close, expiry, short_option_cost, long_option_cost)
 
 
@@ -274,18 +263,18 @@ def create_bear_call_spread(api_token, api_secret):
     start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
     short_option_cost = edge.get_option_price(conn, 'NFO', sell_strike_symbol, start, datetime.datetime.today(), 'min')
     long_option_cost = edge.get_option_price(conn, 'NFO', buy_strike_symbol, start, datetime.datetime.today(), 'min')
-    notify("created bear call spread!")
+    util.notify("created bear call spread!")
     record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, "Bearish", nifty_close, expiry, short_option_cost, long_option_cost)
 
 def calculate_pnl(quantity, long_entry, long_exit, short_entry, short_exit):
     pnl = float(quantity) * ((float(short_entry) - float(short_exit)) + (float(long_exit) - float(long_entry)))
-    notify(f"Realized Gains: {round(pnl, 2)}")
+    util.notify(f"Realized Gains: {round(pnl, 2)}")
     return round(pnl, 2)
 
 @retry(tries=5, delay=5, backoff=2)
 def close_active_positions(api_token, api_secret):
     print("Closing active positions")
-    notify("Closing active positions")
+    util.notify("Closing active positions")
     active_strategies = strategies.find({'strategy_state': 'active'})
     for strategy in active_strategies:
         #buy_order = place_buy_order(api_token, api_secret, strategy['short_option_symbol'], strategy['quantity'])
@@ -301,16 +290,15 @@ def close_active_positions(api_token, api_secret):
         #     pnl = calculate_pnl(strategy['quantity'], strategy['long_option_cost'], sell_order['average_traded_price'], strategy['short_option_cost'],buy_order['average_traded_price'])
         #     strategies.update_one({'_id': strategy['_id']}, {'$set': {'pnl': pnl}})
         #notify("Long option leg closed")
-        notify("Short option leg closed")
-        notify("Long option leg closed")
+        util.notify("Short option leg closed")
+        util.notify("Long option leg closed")
         strategies.update_one({'_id': strategy['_id']}, {'$set': {'strategy_state': 'closed'}})
         strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_date': str(datetime.datetime.now().date())}})
         strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_time': datetime.datetime.now().strftime('%H:%M')}})
         days_ago = datetime.datetime.now() - timedelta(days=7)
         start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
-        conn = edge.login_to_integrate(api_token, api_secret)
-        short_exit_price = edge.get_option_price(conn, 'NFO', strategy['short_option_symbol'], start, datetime.datetime.today(), 'min')
-        long_exit_price = edge.get_option_price(conn, 'NFO', strategy['long_option_symbol'], start, datetime.datetime.today(), 'min')
+        short_exit_price = edge.get_option_price(api_token, api_secret, 'NFO', strategy['short_option_symbol'], start, datetime.datetime.today(), 'min')
+        long_exit_price = edge.get_option_price(api_token, api_secret, 'NFO', strategy['long_option_symbol'], start, datetime.datetime.today(), 'min')
         strategies.update_one({'_id': strategy['_id']}, {'$set': {'short_exit_price': short_exit_price}})
         strategies.update_one({'_id': strategy['_id']}, {'$set': {'long_exit_price': long_exit_price}})
         pnl = calculate_pnl(strategy['quantity'], strategy['long_option_cost'], long_exit_price, strategy['short_option_cost'],short_exit_price)
@@ -319,11 +307,13 @@ def close_active_positions(api_token, api_secret):
 
 
 def main():
-    notify("Nifty Positional bot kicked off")
+    util.notify("Nifty Positional bot kicked off")
     print("Nifty Positional bot kicked off")
     util.notify(f"Supertrend Direction: {get_supertrend_direction()}", slack_client=slack_client)
     util.notify(f"Supertrend Value: {get_supertrend_value()}", slack_client=slack_client)
     iteration = 0
+    days_ago = datetime.datetime.now() - timedelta(days=7)
+    start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
     while True:
         current_time = datetime.datetime.now().time()
         if iteration % 35 == 0:
@@ -337,22 +327,27 @@ def main():
                     {'strategy_state': 'active'})
                 for strategy in active_strategies:
                     if strategy['trend'] != get_supertrend_direction():
-                        notify(f"Supertrend Direction Changed to {get_supertrend_direction()}")
+                        util.notify(f"Supertrend Direction Changed to {get_supertrend_direction()}")
                         close_active_positions(api_token, api_secret)
                         break
 
                     if strategy['trend'] == 'Bullish' and get_supertrend_value() > (strategy['nifty_close']):
-                        notify("Supertrend crossed inception point, shift the strikes!")
+                        util.notify("Supertrend crossed inception point, shift the strikes!")
                         close_active_positions(api_token, api_secret)
                         break
 
                     if strategy['trend'] == 'Bearish' and get_supertrend_value() < (strategy['nifty_close']):
-                        notify("Supertrend crossed inception point, shift the strikes!")
+                        util.notify("Supertrend crossed inception point, shift the strikes!")
+                        close_active_positions(api_token, api_secret)
+                        break
+
+                    if edge.get_option_price(api_token, api_secret, 'NFO', strategy['short_option_symbol'], start, datetime.datetime.today(), 'min') <= .11 * float(strategy['short_option_cost']):
+                        util.notify("90% premium decayed! Closing positions")
                         close_active_positions(api_token, api_secret)
                         break
 
                     if current_time > datetime.time(hour=15, minute=00) and strategy['expiry'] == str(datetime.datetime.now().date()):
-                        notify("Rolling over positions to next expiry")
+                        util.notify("Rolling over positions to next expiry")
                         close_active_positions(api_token, api_secret)
                         break
             else:
@@ -362,7 +357,7 @@ def main():
                     create_bear_call_spread(api_token, api_secret)
         
         if current_time > trade_end_time:
-            notify("Closing Bell, Bot will exit now")
+            util.notify("Closing Bell, Bot will exit now")
             return   
         time.sleep(10)
         iteration = iteration + 1
