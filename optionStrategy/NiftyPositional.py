@@ -207,8 +207,8 @@ def create_bull_put_spread(api_token, api_secret):
     # long_option_cost = buy_order['average_traded_price']
     days_ago = datetime.datetime.now() - timedelta(days=7)
     start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
-    short_option_cost = edge.get_option_price(conn, 'NFO', sell_strike_symbol, start, datetime.datetime.today(), 'min')
-    long_option_cost = edge.get_option_price(conn, 'NFO', buy_strike_symbol, start, datetime.datetime.today(), 'min')
+    short_option_cost = edge.get_option_price(api_token, api_secret, 'NFO', sell_strike_symbol, start, datetime.datetime.today(), 'min')
+    long_option_cost = edge.get_option_price(api_token, api_secret, 'NFO', buy_strike_symbol, start, datetime.datetime.today(), 'min')
     util.notify("created bull put spread!",slack_client=slack_client)
     record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, "Bullish", nifty_close, expiry, short_option_cost, long_option_cost)
 
@@ -261,8 +261,8 @@ def create_bear_call_spread(api_token, api_secret):
     # long_option_cost = buy_order['average_traded_price']
     days_ago = datetime.datetime.now() - timedelta(days=7)
     start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
-    short_option_cost = edge.get_option_price(conn, 'NFO', sell_strike_symbol, start, datetime.datetime.today(), 'min')
-    long_option_cost = edge.get_option_price(conn, 'NFO', buy_strike_symbol, start, datetime.datetime.today(), 'min')
+    short_option_cost = edge.get_option_price(api_token, api_secret, 'NFO', sell_strike_symbol, start, datetime.datetime.today(), 'min')
+    long_option_cost = edge.get_option_price(api_token, api_secret, 'NFO', buy_strike_symbol, start, datetime.datetime.today(), 'min')
     util.notify("created bear call spread!",slack_client=slack_client)
     record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, "Bearish", nifty_close, expiry, short_option_cost, long_option_cost)
 
