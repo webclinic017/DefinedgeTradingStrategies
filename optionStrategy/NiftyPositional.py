@@ -160,6 +160,7 @@ def load_csv_from_zip(url='https://app.definedgesecurities.com/public/allmaster.
             df = pd.read_csv(csv_file, header=None, names=column_names, low_memory=False, on_bad_lines='skip')
     df = df[(df['SEGMENT'] == 'NFO') & (df['INSTRUMENT TYPE'] == 'OPTIDX')]
     df = df[(df['SYMBOL'].str.startswith('NIFTY'))]
+    df['EXPIRY'] = df['EXPIRY'].astype(str).apply(lambda x: x.zfill(8))
     df['EXPIRY'] = pd.to_datetime(df['EXPIRY'], format='%d%m%Y', errors='coerce')
     df = df.sort_values(by='EXPIRY', ascending=True)
     # Return the loaded DataFrame
