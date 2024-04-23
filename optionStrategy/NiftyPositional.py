@@ -332,17 +332,17 @@ def main():
                         close_active_positions(api_token, api_secret)
                         break
 
-                    if strategy['trend'] == 'Bullish' and get_supertrend_value() > (strategy['nifty_close']):
+                    if strategy['trend'] == 'Bullish' and get_supertrend_value() > (strategy['nifty_close'] + 20):
                         util.notify("Supertrend crossed inception point, shift the strikes!",slack_client=slack_client)
                         close_active_positions(api_token, api_secret)
                         break
 
-                    if strategy['trend'] == 'Bearish' and get_supertrend_value() < (strategy['nifty_close']):
+                    if strategy['trend'] == 'Bearish' and get_supertrend_value() < (strategy['nifty_close'] - 20):
                         util.notify("Supertrend crossed inception point, shift the strikes!",slack_client=slack_client)
                         close_active_positions(api_token, api_secret)
                         break
 
-                    if edge.get_option_price(api_token, api_secret, 'NFO', strategy['short_option_symbol'], start, datetime.datetime.today(), 'min') <= .11 * float(strategy['short_option_cost']):
+                    if edge.get_option_price(api_token, api_secret, 'NFO', strategy['short_option_symbol'], start, datetime.datetime.today(), 'min') <= .09 * float(strategy['short_option_cost']):
                         util.notify("90% premium decayed! Closing positions",slack_client=slack_client)
                         close_active_positions(api_token, api_secret)
                         break
