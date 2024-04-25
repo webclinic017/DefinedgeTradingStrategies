@@ -31,10 +31,11 @@ slack_client = WebClient(token=os.environ.get('slack_client'))
 slack_channel = "niftyweekly"
 CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongodb.net/?retryWrites=true&w=majority"  # Mongo Connection
 user_name = "sugam"
-quantity = '50'
+#quantity = '50'
 trade_start_time = parser.parse("9:17:00").time()
 trade_end_time = parser.parse("15:28:00").time()
 slack_client = WebClient(token=os.environ.get('slack_client'))
+quantity = os.environ.get('quantity')
 
 api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
 api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
@@ -201,15 +202,15 @@ def create_bull_put_spread(api_token, api_secret):
     expiry = str(expiry)
     expiry = parser.parse(expiry).date()
     print(expiry)
-    # buy_order = place_buy_order(api_token, api_secret, buy_strike_symbol, quantity)
-    # if buy_order['order_status'] == "COMPLETE":
-    #     sell_order = place_sell_order(api_token, api_secret, sell_strike_symbol, quantity)
-    # short_option_cost = sell_order['average_traded_price']
-    # long_option_cost = buy_order['average_traded_price']
-    days_ago = datetime.datetime.now() - timedelta(days=7)
-    start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
-    short_option_cost = edge.get_option_price(api_token, api_secret, 'NFO', sell_strike_symbol, start, datetime.datetime.today(), 'min')
-    long_option_cost = edge.get_option_price(api_token, api_secret, 'NFO', buy_strike_symbol, start, datetime.datetime.today(), 'min')
+    buy_order = place_buy_order(api_token, api_secret, buy_strike_symbol, quantity)
+    if buy_order['order_status'] == "COMPLETE":
+         sell_order = place_sell_order(api_token, api_secret, sell_strike_symbol, quantity)
+    short_option_cost = sell_order['average_traded_price']
+    long_option_cost = buy_order['average_traded_price']
+    #days_ago = datetime.datetime.now() - timedelta(days=7)
+    #start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
+    #short_option_cost = edge.get_option_price(api_token, api_secret, 'NFO', sell_strike_symbol, start, datetime.datetime.today(), 'min')
+    #long_option_cost = edge.get_option_price(api_token, api_secret, 'NFO', buy_strike_symbol, start, datetime.datetime.today(), 'min')
     util.notify("created bull put spread!",slack_client=slack_client)
     record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, "Bullish", nifty_close, expiry, short_option_cost, long_option_cost)
 
@@ -255,15 +256,15 @@ def create_bear_call_spread(api_token, api_secret):
     expiry = str(expiry)
     expiry = parser.parse(expiry).date()
     print(expiry)
-    # buy_order = place_buy_order(api_token, api_secret, buy_strike_symbol, quantity)
-    # if buy_order['order_status'] == "COMPLETE":
-    #     sell_order = place_sell_order(api_token, api_secret, sell_strike_symbol, quantity)
-    # short_option_cost = sell_order['average_traded_price']
-    # long_option_cost = buy_order['average_traded_price']
-    days_ago = datetime.datetime.now() - timedelta(days=7)
-    start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
-    short_option_cost = edge.get_option_price(api_token, api_secret, 'NFO', sell_strike_symbol, start, datetime.datetime.today(), 'min')
-    long_option_cost = edge.get_option_price(api_token, api_secret, 'NFO', buy_strike_symbol, start, datetime.datetime.today(), 'min')
+    buy_order = place_buy_order(api_token, api_secret, buy_strike_symbol, quantity)
+    if buy_order['order_status'] == "COMPLETE":
+        sell_order = place_sell_order(api_token, api_secret, sell_strike_symbol, quantity)
+    short_option_cost = sell_order['average_traded_price']
+    long_option_cost = buy_order['average_traded_price']
+    #days_ago = datetime.datetime.now() - timedelta(days=7)
+    #start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
+    #short_option_cost = edge.get_option_price(api_token, api_secret, 'NFO', sell_strike_symbol, start, datetime.datetime.today(), 'min')
+    #long_option_cost = edge.get_option_price(api_token, api_secret, 'NFO', buy_strike_symbol, start, datetime.datetime.today(), 'min')
     util.notify("created bear call spread!",slack_client=slack_client)
     record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, "Bearish", nifty_close, expiry, short_option_cost, long_option_cost)
 
@@ -278,32 +279,32 @@ def close_active_positions(api_token, api_secret):
     util.notify("Closing active positions",slack_client=slack_client)
     active_strategies = strategies.find({'strategy_state': 'active'})
     for strategy in active_strategies:
-        #buy_order = place_buy_order(api_token, api_secret, strategy['short_option_symbol'], strategy['quantity'])
-        #notify("Short option leg closed",slack_client=slack_client)
-        # if buy_order['order_status'] == "COMPLETE":
-        #     sell_order = place_sell_order(api_token, api_secret, strategy['long_option_symbol'], strategy['quantity'])
-        #     notify("Long option leg closed",slack_client=slack_client)
-        #     strategies.update_one({'_id': strategy['_id']}, {'$set': {'strategy_state': 'closed'}})
-        #     strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_date': str(datetime.datetime.now().date())}})
-        #     strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_time': datetime.datetime.now().strftime('%H:%M')}})
-        #     strategies.update_one({'_id': strategy['_id']}, {'$set': {'short_exit_price': buy_order['average_traded_price']}})
-        #     strategies.update_one({'_id': strategy['_id']}, {'$set': {'long_exit_price': sell_order['average_traded_price']}})
-        #     pnl = calculate_pnl(strategy['quantity'], strategy['long_option_cost'], sell_order['average_traded_price'], strategy['short_option_cost'],buy_order['average_traded_price'])
-        #     strategies.update_one({'_id': strategy['_id']}, {'$set': {'pnl': pnl}})
-        #notify("Long option leg closed",slack_client=slack_client)
+        buy_order = place_buy_order(api_token, api_secret, strategy['short_option_symbol'], strategy['quantity'])
         util.notify("Short option leg closed",slack_client=slack_client)
+        if buy_order['order_status'] == "COMPLETE":
+            sell_order = place_sell_order(api_token, api_secret, strategy['long_option_symbol'], strategy['quantity'])
+            util.notify("Long option leg closed",slack_client=slack_client)
+            strategies.update_one({'_id': strategy['_id']}, {'$set': {'strategy_state': 'closed'}})
+            strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_date': str(datetime.datetime.now().date())}})
+            strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_time': datetime.datetime.now().strftime('%H:%M')}})
+            strategies.update_one({'_id': strategy['_id']}, {'$set': {'short_exit_price': buy_order['average_traded_price']}})
+            strategies.update_one({'_id': strategy['_id']}, {'$set': {'long_exit_price': sell_order['average_traded_price']}})
+            pnl = calculate_pnl(strategy['quantity'], strategy['long_option_cost'], sell_order['average_traded_price'], strategy['short_option_cost'],buy_order['average_traded_price'])
+            strategies.update_one({'_id': strategy['_id']}, {'$set': {'pnl': pnl}})
         util.notify("Long option leg closed",slack_client=slack_client)
-        strategies.update_one({'_id': strategy['_id']}, {'$set': {'strategy_state': 'closed'}})
-        strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_date': str(datetime.datetime.now().date())}})
-        strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_time': datetime.datetime.now().strftime('%H:%M')}})
-        days_ago = datetime.datetime.now() - timedelta(days=7)
-        start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
-        short_exit_price = edge.get_option_price(api_token, api_secret, 'NFO', strategy['short_option_symbol'], start, datetime.datetime.today(), 'min')
-        long_exit_price = edge.get_option_price(api_token, api_secret, 'NFO', strategy['long_option_symbol'], start, datetime.datetime.today(), 'min')
-        strategies.update_one({'_id': strategy['_id']}, {'$set': {'short_exit_price': short_exit_price}})
-        strategies.update_one({'_id': strategy['_id']}, {'$set': {'long_exit_price': long_exit_price}})
-        pnl = calculate_pnl(strategy['quantity'], strategy['long_option_cost'], long_exit_price, strategy['short_option_cost'],short_exit_price)
-        strategies.update_one({'_id': strategy['_id']}, {'$set': {'pnl': pnl}})
+        # util.notify("Short option leg closed",slack_client=slack_client)
+        # util.notify("Long option leg closed",slack_client=slack_client)
+        # strategies.update_one({'_id': strategy['_id']}, {'$set': {'strategy_state': 'closed'}})
+        # strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_date': str(datetime.datetime.now().date())}})
+        # strategies.update_one({'_id': strategy['_id']}, {'$set': {'exit_time': datetime.datetime.now().strftime('%H:%M')}})
+        # days_ago = datetime.datetime.now() - timedelta(days=7)
+        # start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
+        # short_exit_price = edge.get_option_price(api_token, api_secret, 'NFO', strategy['short_option_symbol'], start, datetime.datetime.today(), 'min')
+        # long_exit_price = edge.get_option_price(api_token, api_secret, 'NFO', strategy['long_option_symbol'], start, datetime.datetime.today(), 'min')
+        # strategies.update_one({'_id': strategy['_id']}, {'$set': {'short_exit_price': short_exit_price}})
+        # strategies.update_one({'_id': strategy['_id']}, {'$set': {'long_exit_price': long_exit_price}})
+        # pnl = calculate_pnl(strategy['quantity'], strategy['long_option_cost'], long_exit_price, strategy['short_option_cost'],short_exit_price)
+        # strategies.update_one({'_id': strategy['_id']}, {'$set': {'pnl': pnl}})
     return
 
 

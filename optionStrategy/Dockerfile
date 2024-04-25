@@ -6,6 +6,7 @@ RUN apt-get upgrade -y
 # Change TimeZone
 ENV TZ=Asia/Calcutta
 ENV slack_client = " "
+ENV quantity = 50
 # ENV access_token = "xyz"
 # ENV user_name = "xyz"
 # ENV target_profit = 0
