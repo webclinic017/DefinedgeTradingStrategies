@@ -35,7 +35,7 @@ user_name = "sugam"
 trade_start_time = parser.parse("9:17:00").time()
 trade_end_time = parser.parse("15:28:00").time()
 slack_client = WebClient(token=os.environ.get('slack_client'))
-quantity = os.environ.get('quantity')
+quantity = int(os.environ.get('quantity'))
 
 api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
 api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
@@ -221,7 +221,7 @@ def record_details_in_mongo(sell_strike_symbol, buy_strike_symbol, trend, nifty_
     strategy = {
     'instrument_name': 'Nifty',
     'quantity': int(quantity),
-    'lot_size': 50,
+    'lot_size': 25,
     'short_exit_price': 0,
     'long_exit_price': 0,
     'strategy_state': 'active',
