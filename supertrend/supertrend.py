@@ -11,6 +11,7 @@ pd.set_option('display.max_rows', None)
 import time
 import sys
 import os
+from slack_sdk import WebClient
 from pymongo import MongoClient
 
 """
@@ -20,8 +21,8 @@ CONNECTION_STRING = os.environ.get('CONNECTION_STRING')  #Mongo Connection
 trade_end_time = parser.parse(str(os.environ.get('trade_end_time'))).time()
 """
 
-slack_url = "https://hooks.slack.com/services/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"
-slack_channel = "straddlebot"
+slack_channel = "niftyweekly"
+slack_client = WebClient(token=os.environ.get('slack_token'))
 CONNECTION_STRING = "mongodb+srv://adminuser:05NZN7kKp5D4TZnU@bots.vnitakj.mongodb.net/?retryWrites=true&w=majority" #Mongo Connection
 trade_end_time = parser.parse("15:28:00").time()
 trade_start_time = parser.parse("09:16:00").time()
@@ -38,7 +39,10 @@ def get_supertrend_start_date():
 
 def main():
     print("Supertrend Started")
+    iteration = 0
     while True:
+        if iteration % 35 == 0:
+            util.notify("Super Trend Bot is active!", slack_client=slack_client)
         current_time = datetime.now().time()
         if current_time > trade_start_time:
             api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"

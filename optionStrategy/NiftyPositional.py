@@ -34,7 +34,7 @@ user_name = "sugam"
 #quantity = '50'
 trade_start_time = parser.parse("9:17:00").time()
 trade_end_time = parser.parse("15:28:00").time()
-slack_client = WebClient(token=os.environ.get('slack_client'))
+slack_client = WebClient(token=os.environ.get('slack_token'))
 quantity = os.environ.get('quantity')
 
 api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
