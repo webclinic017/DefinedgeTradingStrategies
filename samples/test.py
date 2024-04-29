@@ -61,12 +61,12 @@ def main():
     api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
     conn = login_to_integrate(api_token, api_secret)
     #days_ago = datetime.now() - timedelta(days=90)
-    days_ago = datetime(2024,1,15)
+    days_ago = datetime(2000,1,15)
     start = days_ago.replace(hour=9, minute=15, second=0, microsecond=0)
-    df = ta.renko(conn, 'NSE', 'Nifty 50', start, datetime.today(), 'min', .1)
+    df = ta.renko(conn, 'NSE', 'ZYDUSLIFE-EQ', start, datetime.today(), 'day', 3)
     #ohlc = edge.fetch_historical_data(conn, 'NFO', 'NIFTY18APR24P22600', start, datetime.today(), 'min')
     renko_st = ta.supertrend(df, 40, 10)
-    print(renko_st.iloc[-100:-1])
+    print(renko_st.iloc[1:100])
     #print(ohlc.iloc[-100:-1])
 
 

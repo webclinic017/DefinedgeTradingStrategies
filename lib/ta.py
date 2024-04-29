@@ -1,9 +1,8 @@
 import pandas as pd
-from lib import utils as util
+pd.set_option('mode.chained_assignment', None)
 from lib import connect_definedge as edge
 from datetime import datetime
 import numpy as np
-import math
 
 def atr(DF: pd.DataFrame, period: int):
     df = DF.copy()
@@ -55,7 +54,6 @@ def supertrend(df: pd.DataFrame, period: int, multiplier: int):
 
 
 def ema_channel(df: pd.DataFrame, period = 21):
-    df.drop(['volume'], axis='columns', inplace=True)
     df['ema_low'] = df['low'].ewm(com=10, min_periods = period).mean() #calculating EMA
     df['ema_high'] = df['high'].ewm(com=10, min_periods = period).mean() #calculating EMA
 
@@ -65,6 +63,27 @@ def ema_channel(df: pd.DataFrame, period = 21):
     df['trend'] = np.where(df['close'] <= df['ema_low'], 'Bearish', 'Bullish')    
     return df
 
+def tma(df: pd.DataFrame):
+    df['ema_20'] = df['close'].ewm(span=20, adjust=False).mean() #calculating EMA
+    df['ema_30'] = df['close'].ewm(span=30, adjust=False).mean() #calculating EMA
+    df['ema_40'] = df['close'].ewm(span=40, adjust=False).mean() #calculating EMA
+
+    df['ema_20'] = df['ema_20'].round(2)
+    df['ema_30'] = df['ema_30'].round(2)
+    df['ema_40'] = df['ema_40'].round(2)
+    return df
+
+
+def rs(df: pd.DataFrame, nifty: pd.DataFrame):
+    stock = df.copy()
+    if stock['close'].iloc[-1] < 100:
+        multiplier = 10000
+    else:
+        multiplier = 1000
+    stock['close'] = (stock['close'] * multiplier)/nifty['close']
+    stock['close'] = stock['close'].round(2)
+    stock.drop(['open','high','low','volume'], axis='columns', inplace=True)
+    return stock
 
 def renko(conn, exchange: str, trading_symbol: str, start: datetime, end: datetime, interval = 'min', brick_size = .1) -> pd.DataFrame:
 
@@ -103,3 +122,65 @@ def renko(conn, exchange: str, trading_symbol: str, start: datetime, end: dateti
     df = pd.DataFrame(renko)
     df['close'] = np.where(df['color'] == 'red', df['low'], df['high'])
     return df 
+
+
+def convert_to_renko(brick_size = .1, df: pd.DataFrame = pd.DataFrame) -> pd.DataFrame:
+    brick_size = float(brick_size)/100
+    df['datetime'] = pd.to_datetime(df['datetime'])
+    first_brick = {
+        'datetime': df['datetime'].iloc[0],
+        'low': df['close'].iloc[0],
+        'high': df['close'].iloc[0],
+        'color': 'green'
+    }
+    renko = [first_brick]
+    dic =  df.to_dict(orient='records')
+    for row in dic:
+        up_step = round((renko[-1]['high'] * brick_size),2)
+        down_step = round((renko[-1]['low'] * brick_size),2)
+        if row['close'] >= renko[-1]['high'] + up_step:
+            while row['close'] >= renko[-1]['high'] + (renko[-1]['high'] * brick_size):
+                new_brick=[{
+                    'datetime': row['datetime'],
+                    'low': round(renko[-1]['high'], 2),
+                    'high': round((renko[-1]['high'] + (renko[-1]['high'] * brick_size)), 2),
+                    'color': 'green'  
+                }]
+                renko = renko + new_brick
+        if row['close'] <= renko[-1]['low'] - down_step:
+            while row['close'] <= renko[-1]['low'] - (renko[-1]['low'] * brick_size):
+                new_brick=[{
+                    'datetime': row['datetime'],
+                    'low': round((renko[-1]['low'] - (renko[-1]['low'] * brick_size)), 2),
+                    'high': round(renko[-1]['low'], 2),
+                    'color': 'red'  
+                }]
+                renko = renko + new_brick
+    df = pd.DataFrame(renko)
+    df['close'] = np.where(df['color'] == 'red', df['low'], df['high'])
+    return df
+
+
+
+def rsi(data, period=14):
+    """
+    Calculate the Relative Strength Index (RSI) for OHLC data.
+    
+    Parameters:
+    data (DataFrame): DataFrame containing OHLC data with columns ['Open', 'High', 'Low', 'Close'].
+    period (int): Period for calculating RSI. Default is 14.
+    
+    Returns:
+    DataFrame: DataFrame containing RSI values.
+    """
+    data['delta'] = data['close'].diff()
+    data['gain'] = (data['delta'].where(data['delta'] > 0, 0)).rolling(window=period).mean()
+    data['loss'] = (-data['delta'].where(data['delta'] < 0, 0)).rolling(window=period).mean()
+
+    data['rs'] = data['gain'] / data['loss']
+    data['rsi'] = 100 - (100 / (1 + data['rs']))
+    data['rsi'] = data['rsi'].round(2)
+    data.drop(['delta','gain','loss','rs'], axis='columns', inplace=True)
+    
+    return data
+
