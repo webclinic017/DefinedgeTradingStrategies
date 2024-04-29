@@ -81,6 +81,7 @@ def main():
             return
         
         time.sleep(10)
+        iteration = iteration + 1
 
 if __name__ == "__main__":
     main()
