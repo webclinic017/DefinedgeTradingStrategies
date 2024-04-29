@@ -76,7 +76,7 @@ def tma(df: pd.DataFrame):
 
 def rs(df: pd.DataFrame, nifty: pd.DataFrame):
     stock = df.copy()
-    if stock['close'].iloc[-1] < 100:
+    if stock['close'].min() < 100:
         multiplier = 10000
     else:
         multiplier = 1000
