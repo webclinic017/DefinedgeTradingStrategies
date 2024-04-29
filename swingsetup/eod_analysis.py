@@ -15,6 +15,8 @@ scripts = ['360ONE-EQ','3MINDIA-EQ','AARTIIND-EQ','AAVAS-EQ','ABB-EQ','ABBOTINDI
 
 mongo_client = MongoClient(CONNECTION_STRING)
 eod_analysis = mongo_client['Bots']['eod_analysis']
+eod_qualified = mongo_client['Bots']['eod_qualified']
+query = {'ema_channel_trend': 'Bullish', 'rs_renko_1_percent': 'Positive', 'rs_renko_3_percent': 'Positive', 'renko_trend_5_percent': 'Bullish', 'renko_trend_3_percent': 'Bullish', 'renko_trend_1_percent': 'Bullish'}
 
 def main():
     api_token = "618a0b4c-f173-407e-acdc-0f61080f856c"
@@ -128,6 +130,16 @@ def main():
             }
             eod_analysis.insert_one(analysis)
 
+    if eod_analysis.count_documents(query) > 1:
+        qualified_stocks = eod_analysis.find(query)
+        if eod_qualified.estimated_document_count() > 0:
+            eod_qualified.drop()
+        for stock in qualified_stocks:
+            qualified_stock = {
+                'instrument_name': stock['instrument_name'],
+                'rsi_daily': stock['rsi_daily']
+            }
+            eod_qualified.insert_one(qualified_stock)
 
 
 
