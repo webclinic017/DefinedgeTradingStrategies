@@ -9,7 +9,6 @@ from dateutil import parser
 import pandas as pd
 pd.set_option('display.max_rows', None)
 import time
-from logging import INFO, basicConfig, getLogger
 import sys
 import os
 from pymongo import MongoClient
@@ -36,8 +35,6 @@ def get_supertrend_start_date():
     supertrend = supertrend_collection.find_one({"_id": "supertrend"})
     return supertrend["start_date"]
 
-basicConfig(level=INFO)
-logger = getLogger()
 
 def main():
     print("Supertrend Started")
@@ -48,7 +45,6 @@ def main():
             api_secret = "TbfcWNtKL7vaXfPV3m6pKQ=="
             exchange = "NSE"
             trading_symbol = "Nifty 50"
-            frequency = '15T'
             # Calculate 60 days ago from today
 
             if supertrend_collection.count_documents({"_id": "supertrend"}) == 0:
@@ -65,7 +61,7 @@ def main():
             conn = edge.login_to_integrate(api_token, api_secret)
             df = ta.renko(conn, exchange, trading_symbol, start, end)
             
-            logger.info("\n***** 1 min Renko Data *****\n")
+            print("\n***** Fetched 1 min Renko Data *****\n")
             df= ta.supertrend(df, 40, 10)
             print(df.iloc[-1])
 
