@@ -1,4 +1,4 @@
-from integrate import ConnectToIntegrate, IntegrateData
+from integrate import ConnectToIntegrate, IntegrateData, IntegrateOrders
 import pandas as pd
 import pyotp
 from datetime import datetime
